@@ -94,7 +94,7 @@ public class SafeDialogUtils {
         });
     }
 
-    public static boolean showQuestionMessageDialog(final String message, final String title) {
+    public static boolean showYesNoDialog(final String message, final String title) {
 
         final AtomicBoolean choice = new AtomicBoolean(false);
 

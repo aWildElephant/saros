@@ -54,7 +54,7 @@ public class AddContactAction extends AbstractSarosAction {
     }
 
     private void confirmAddJIDNotOnServer(JID jid) {
-        boolean choice = SafeDialogUtils.showQuestionMessageDialog(
+        boolean choice = SafeDialogUtils.showYesNoDialog(
             "You entered a valid XMPP server.\n\n"
                 + "Unfortunately your entered JID is unknown to the server.\n"
                 + "Please make sure you spelled the JID correctly.\n\n"
