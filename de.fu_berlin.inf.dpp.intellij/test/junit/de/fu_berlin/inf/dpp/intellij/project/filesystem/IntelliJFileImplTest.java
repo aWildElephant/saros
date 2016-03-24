@@ -21,62 +21,37 @@
 
 package de.fu_berlin.inf.dpp.intellij.project.filesystem;
 
-import com.intellij.mock.MockLocalFileSystem;
-import com.intellij.openapi.project.Project;
+import com.intellij.openapi.application.Application;
+import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.vfs.LocalFileSystem;
-import com.intellij.openapi.vfs.VirtualFile;
 import de.fu_berlin.inf.dpp.filesystem.IFile;
 import de.fu_berlin.inf.dpp.filesystem.IPath;
-import org.easymock.EasyMock;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
-import org.junit.Rule;
 import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
-import org.powermock.api.easymock.PowerMock;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
 import java.io.ByteArrayInputStream;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 
-import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
-@PrepareForTest({ LocalFileSystem.class })
+@PrepareForTest({ LocalFileSystem.class, ApplicationManager.class,
+    Application.class })
 @RunWith(PowerMockRunner.class)
-public class IntelliJFileImplTest {
+public class IntelliJFileImplTest extends IntelliJResourceImplTest {
 
-    public static final String TESTFILE_NAME = "testfile.txt";
-    public static final String NEW_FILE_NAME = "newCreateFile.txt";
-    @Rule
-    public TemporaryFolder folder = new TemporaryFolder();
-
-    public static final String TEST_PROJECT_NAME = "project";
-
-    //Since {@link IntelliJFileImpl#getContents} getContents is just creating a
-    // FileInputStream, a seperate test for getContents is not necessary
-    @Test
-    public void testSetAndGetContents() throws Exception {
-        IFile file = createTestFile();
-        byte[] content = { 1, 2, 3, 4 };
-
-        file.setContents(new ByteArrayInputStream(content), true, true);
-
-        byte[] result = new byte[content.length];
-        file.getContents().read(result);
-
-        assertArrayEquals(content, result);
-    }
+    public static final String TEST_FILE_NAME = "testFile.txt";
+    public static final String OTHER_FILE_NAME = "otherFile.txt";
 
     @Test
     public void testIfNotPresentExistIsFalse() throws Exception {
-        createTestProjectFolder();
         IFile file = new IntelliJFileImpl(getMockProject(),
-            new File(NEW_FILE_NAME));
+            new File(OTHER_FILE_NAME));
 
         assertTrue(!file.exists());
     }
@@ -89,10 +64,11 @@ public class IntelliJFileImplTest {
     }
 
     @Test
-    public void testCreate() throws Exception {
-        createTestProjectFolder();
+    public void testCreate() throws IOException {
+        mockApplicationManager();
+        mockFileSystem();
         IFile file = new IntelliJFileImpl(getMockProject(),
-            new File("newCreateFile.txt"));
+            new File(TEST_FILE_NAME));
 
         file.create(new ByteArrayInputStream(new byte[] {}), false);
 
@@ -101,35 +77,39 @@ public class IntelliJFileImplTest {
 
     @Test
     public void testGetSize() throws Exception {
+        mockFileSystem();
         IFile file = createFileWithContent();
 
-        assertEquals(4, file.getSize());
+        assertEquals(file.getSize(), 4);
     }
 
     @Test
-    public void testDelete() throws Exception {
+    public void testDelete() throws IOException {
+        mockApplicationManager();
         mockFileSystem();
         IFile file = createTestFile();
 
         file.delete(0);
 
-        assertTrue(!file.exists());
+        assertFalse(file.exists());
     }
 
     @Test
-    public void testMove() throws Exception {
+    public void testMove() throws IOException {
+        mockApplicationManager();
+        mockFileSystem();
         IFile file = createTestFile();
-        String oldPath = file.getFullPath().toPortableString();
+
+        String oldPath = file.getLocation().toPortableString();
         IPath destination = IntelliJPathImpl
             .fromString(folder.getRoot().getPath()).append(TEST_PROJECT_NAME)
-            .append("newFileName.txt");
+            .append(OTHER_FILE_NAME);
 
         file.move(destination, false);
 
-        assertTrue(!new File(oldPath).exists());
-        assertTrue(file.exists());
-        assertEquals(file.getFullPath(), destination);
+        assertFalse(new File(oldPath).exists());
         assertTrue(new File(destination.toPortableString()).exists());
+        assertEquals(file.getLocation(), destination);
     }
 
     @Test
@@ -137,7 +117,7 @@ public class IntelliJFileImplTest {
         IFile file = createTestFile();
 
         assertEquals(IntelliJPathImpl.fromString(folder.getRoot().getPath())
-                .append(TEST_PROJECT_NAME).append(TESTFILE_NAME),
+                .append(TEST_PROJECT_NAME).append(TEST_FILE_NAME),
             file.getFullPath());
     }
 
@@ -145,14 +125,14 @@ public class IntelliJFileImplTest {
     public void testGetName() throws Exception {
         IFile file = createTestFile();
 
-        assertEquals(TESTFILE_NAME, file.getName());
+        assertEquals(TEST_FILE_NAME, file.getName());
     }
 
     @Test
     public void testGetProjectRelativePath() throws Exception {
         IFile file = createTestFile();
 
-        assertEquals(TESTFILE_NAME,
+        assertEquals(TEST_FILE_NAME,
             file.getProjectRelativePath().toPortableString());
     }
 
@@ -164,46 +144,20 @@ public class IntelliJFileImplTest {
     }
 
     private IntelliJFileImpl createTestFile() throws IOException {
-        createTestProjectFolder();
-        folder.newFile(TEST_PROJECT_NAME + "/" + TESTFILE_NAME);
-        return new IntelliJFileImpl(getMockProject(), new File(TESTFILE_NAME));
+        folder.newFile(TEST_PROJECT_NAME + "/" + TEST_FILE_NAME);
+        return new IntelliJFileImpl(getMockProject(), new File(TEST_FILE_NAME));
     }
 
-    private void createTestProjectFolder() throws IOException {
-        folder.create();
-        folder.newFolder(TEST_PROJECT_NAME);
-    }
-
+    /* This method do not use IntelliJFileImpl#setContents since the VFS is
+     * not be available during the tests. */
     private IFile createFileWithContent() throws Exception {
         IFile file = createTestFile();
-        file.setContents(new ByteArrayInputStream(new byte[] { 1, 1, 1, 1 }),
-            true, true);
+
+        FileOutputStream fos = new FileOutputStream(
+            file.getLocation().toFile());
+        fos.write(new byte[] { 1, 1, 1, 1 });
+        fos.close();
+
         return file;
-    }
-
-    private void mockFileSystem() {
-        PowerMock.mockStatic(LocalFileSystem.class);
-
-        LocalFileSystem fs = new MockLocalFileSystem() {
-            @Nullable
-            @Override
-            public VirtualFile refreshAndFindFileByIoFile(
-                @NotNull
-                File file) {
-                return null;
-            }
-        };
-
-        EasyMock.expect(LocalFileSystem.getInstance()).andReturn(fs);
-        PowerMock.replay(LocalFileSystem.class);
-    }
-
-    private IntelliJProjectImpl getMockProject() {
-        Project project = EasyMock.createNiceMock(Project.class);
-
-        EasyMock.expect(project.getBasePath())
-            .andReturn(folder.getRoot().getAbsolutePath());
-        EasyMock.replay(project);
-        return new IntelliJProjectImpl(project, TEST_PROJECT_NAME);
     }
 }

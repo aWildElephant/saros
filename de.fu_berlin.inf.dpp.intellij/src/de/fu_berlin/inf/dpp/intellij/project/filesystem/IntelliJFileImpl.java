@@ -22,24 +22,21 @@
 
 package de.fu_berlin.inf.dpp.intellij.project.filesystem;
 
-import com.intellij.openapi.vfs.LocalFileSystem;
+import com.intellij.openapi.util.ThrowableComputable;
 import de.fu_berlin.inf.dpp.filesystem.IFile;
-import de.fu_berlin.inf.dpp.filesystem.IPath;
 import de.fu_berlin.inf.dpp.filesystem.IResource;
 import org.apache.log4j.Logger;
 
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 
 /**
  * IDEA implementation of the IFile interface.
- * <p/>
- * FIXME: Remove all hacks regarding absolute files.
  */
 public class IntelliJFileImpl extends IntelliJResourceImpl implements IFile {
+
     private static Logger LOG = Logger.getLogger(IntelliJFileImpl.class);
 
     public IntelliJFileImpl(IntelliJProjectImpl project, File file) {
@@ -53,97 +50,61 @@ public class IntelliJFileImpl extends IntelliJResourceImpl implements IFile {
 
     @Override
     public InputStream getContents() throws IOException {
-        if (file.isAbsolute() && file.exists()) {
-            return new FileInputStream(file);
-        }
-
-        if (!file.isAbsolute() & getFullPath().toFile().exists()) {
-            return new FileInputStream(getFullPath().toFile());
-        }
-
-        return null;
+        return getVirtualFile().getInputStream();
     }
 
     @Override
-    public void setContents(InputStream input, boolean force,
+    public void setContents(final InputStream input, boolean force,
         boolean keepHistory) throws IOException {
+        final OutputStream fos = getVirtualFile().getOutputStream(this);
 
-        FileOutputStream fos = null;
-        if (!file.isAbsolute()) {
-            fos = new FileOutputStream(getFullPath().toFile());
-        } else {
-            fos = new FileOutputStream(file);
-        }
+        writeInUIThread(new ThrowableComputable<Void, IOException>() {
+            @Override
+            public Void compute() throws IOException {
+                try {
+                    int read;
+                    byte[] buffer = new byte[1024];
+                    while ((read = input.read(buffer)) != -1) {
+                        fos.write(buffer, 0, read);
+                    }
+                } finally {
+                    fos.flush();
+                    fos.close();
+                }
 
-        try {
-            int read = -1;
-            byte[] buffer = new byte[1024];
-            while ((read = input.read(buffer)) != -1) {
-                fos.write(buffer, 0, read);
+                return null;
             }
-        } finally {
-            fos.flush();
-            fos.close();
-        }
+        });
     }
 
     @Override
     public void create(InputStream input, boolean force) throws IOException {
-        setContents(input, true, true);
-    }
+        writeInUIThread(new ThrowableComputable<Void, IOException>() {
 
-    @Override
-    public IPath getLocation() {
-        return IntelliJPathImpl.fromString(file.getPath());
+            @Override
+            public Void compute() throws IOException {
+                getParent().getVirtualFile().createChildData(this, getName());
+                return null;
+            }
+        });
+
+        setContents(input, true, true);
+        LOG.trace("Created file " + this);
     }
 
     @Override
     public long getSize() throws IOException {
-        return getFullPath().toFile().length();
+        return getVirtualFile().getLength();
+    }
+
+    @Override
+    public void refreshLocal() throws IOException {
+        getVirtualFile().refresh(false, false);
     }
 
     @Override
     public int getType() {
         return FILE;
-    }
-
-    /**
-     * Deletes the file using {@link File#delete()} and updates the IDE with
-     * {@link LocalFileSystem#refreshAndFindFileByIoFile(File)}.
-     *
-     * @param updateFlags - is ignored at the moment
-     * @throws IOException
-     */
-    @Override
-    public void delete(int updateFlags) throws IOException {
-        boolean result = true;
-        if (!file.isAbsolute()) {
-            File absoluteFile = getFullPath().toFile();
-            result = absoluteFile.delete();
-            LocalFileSystem.getInstance()
-                .refreshAndFindFileByIoFile(absoluteFile);
-        } else {
-            result = file.delete();
-            LocalFileSystem.getInstance().refreshAndFindFileByIoFile(file);
-        }
-        if (!result) {
-            LOG.error("Could not delete " + file);
-        }
-    }
-
-    @Override
-    public void move(IPath destination, boolean force) throws IOException {
-        File absoluteFile = getFullPath().toFile();
-        if (absoluteFile.renameTo(destination.toFile())) {
-            IPath newRelativePath = destination
-                .removeFirstSegments(project.getFullPath().segmentCount());
-            file = new File(newRelativePath.toPortableString());
-        }
-    }
-
-    @Override
-    public void refreshLocal() throws IOException {
-        LOG.trace("refreshLocal() //todo");
     }
 
     @Override
@@ -157,6 +118,6 @@ public class IntelliJFileImpl extends IntelliJResourceImpl implements IFile {
 
     @Override
     public String toString() {
-        return file.getPath();
+        return projectRelativePath.toPortableString();
     }
 }
