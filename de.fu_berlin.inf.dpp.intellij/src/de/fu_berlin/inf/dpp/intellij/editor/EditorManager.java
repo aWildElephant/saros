@@ -324,9 +324,6 @@ public class EditorManager extends AbstractActivityProducer
         }
 
         private void startSession(ISarosSession newSarosSession) {
-            assert editorPool.getEditors()
-                .isEmpty() : "EditorPool was not correctly reset!";
-
             session = newSarosSession;
             session.getStopManager().addBlockable(stopManagerListener);
 
@@ -352,7 +349,6 @@ public class EditorManager extends AbstractActivityProducer
             //This sets all editors, that were set to read only, writeable
             //again
             unlockAllEditors();
-            editorPool.clear();
 
             session.removeListener(sessionListener);
             session.removeActivityProducer(EditorManager.this);
@@ -445,7 +441,7 @@ public class EditorManager extends AbstractActivityProducer
     private final LocalEditorHandler localEditorHandler;
     private final LocalEditorManipulator localEditorManipulator;
 
-    private final EditorPool editorPool = new EditorPool();
+    private final EditorPool editorPool;
 
     private IWorkspace workspace;
 
@@ -484,6 +480,7 @@ public class EditorManager extends AbstractActivityProducer
         this.localEditorManipulator = localEditorManipulator;
         this.workspace = workspace;
         this.project = project;
+        this.editorPool = new EditorPool(workspace, project);
 
         documentListener = new StoppableDocumentListener(this);
         fileListener = new StoppableEditorFileListener(this);
@@ -540,14 +537,6 @@ public class EditorManager extends AbstractActivityProducer
 
     public boolean isOpenedInEditor(SPath path) {
         return editorPool.getEditor(path) == null;
-    }
-
-    public void removeAllEditorsForPath(SPath path) {
-        editorPool.removeAll(path);
-    }
-
-    public void replaceAllEditorsForPath(SPath oldPath, SPath newPath) {
-        editorPool.replaceAll(oldPath, newPath);
     }
 
     /**

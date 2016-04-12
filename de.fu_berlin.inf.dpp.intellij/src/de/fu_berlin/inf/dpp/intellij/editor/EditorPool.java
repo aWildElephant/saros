@@ -1,146 +1,200 @@
 package de.fu_berlin.inf.dpp.intellij.editor;
 
+import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.editor.Document;
 import com.intellij.openapi.editor.Editor;
+import com.intellij.openapi.editor.EditorFactory;
+import com.intellij.openapi.fileEditor.FileDocumentManager;
+import com.intellij.openapi.project.Project;
+import com.intellij.openapi.util.Computable;
+import com.intellij.openapi.vfs.LocalFileSystem;
+import com.intellij.openapi.vfs.VirtualFile;
+import com.intellij.util.containers.ArrayListSet;
 import de.fu_berlin.inf.dpp.activities.SPath;
+import de.fu_berlin.inf.dpp.filesystem.IPath;
+import de.fu_berlin.inf.dpp.filesystem.IProject;
+import de.fu_berlin.inf.dpp.filesystem.IWorkspace;
+import de.fu_berlin.inf.dpp.intellij.project.filesystem.IntelliJPathImpl;
+import de.fu_berlin.inf.dpp.intellij.project.filesystem.IntelliJWorkspaceImpl;
+import org.apache.log4j.Logger;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
+import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Set;
 
 /**
- * IntelliJ editor pool
+ * IntelliJ editor pool.
+ * <p/>
+ * This class provides a link between IntelliJ's <code>Editor</code> and
+ * <code>Document</code> instances and files in the current workspace.
+ *
+ * @see EditorFactory
+ * @see FileDocumentManager
  */
-//FIXME: Document instances should not be stored.
-// (see http://confluence.jetbrains.com/display/IDEADEV/IntelliJ+IDEA+Architectural+Overview#IntelliJIDEAArchitecturalOverview-Documents)
-// Maybe just store editors here, load all non-opened files on the fly?
 public class EditorPool {
-    private Map<SPath, Editor> editors = new HashMap<SPath, Editor>();
-    private Map<SPath, Document> documents = new HashMap<SPath, Document>();
-    private Map<Document, SPath> files = new HashMap<Document, SPath>();
 
-    public EditorPool() {
+    private static final Logger LOG = Logger.getLogger(EditorPool.class);
+
+    private final IWorkspace workspace;
+    private final Project project;
+
+    public EditorPool(IWorkspace workspace, Project project) {
+        this.workspace = workspace;
+        this.project = project;
     }
 
     /**
-     * Adds editor and its documents.
-     *
-     * @param file
-     * @param editor
+     * Set all shared documents opened in an editor as read-only.
+     * <p/>
+     * FIXME: all documents not opened in an editor are left as-is.
      */
-    public void add(SPath file, Editor editor) {
-        editors.put(file, editor);
-        add(file, editor.getDocument());
-    }
-
-    /**
-     * Adds this to files and documents.
-     *
-     * @param file
-     * @param document
-     */
-    public void add(SPath file, Document document) {
-        documents.put(file, document);
-        files.put(document, file);
-    }
-
-    /**
-     * Removes the editor for this file, all documents and the file.
-     *
-     * @param file
-     */
-    public void removeAll(SPath file) {
-
-        removeEditor(file);
-
-        Document doc = null;
-        if (documents.containsKey(file)) {
-            doc = documents.remove(file);
-        }
-
-        if (doc != null) {
-            files.remove(doc);
+    public void unlockAllDocuments() {
+        for (Editor ed : getEditors()) {
+            ed.getDocument().setReadOnly(false);
         }
     }
 
     /**
-     * Removes the editor.
-     *
-     * @param file
+     * Set all shared documents opened in an editor as read-write.
+     * <p/>
+     * FIXME: calling this method after unlockAllDocuments will not restore the previous status of affected documents.
      */
-    public void removeEditor(SPath file) {
-        if (editors.containsKey(file)) {
-            editors.remove(file);
+    public void lockAllDocuments() {
+        for (Editor ed : getEditors()) {
+            ed.getDocument().setReadOnly(true);
         }
     }
 
     /**
-     * Replaces all occurences of editors and documents with key oldPath with
-     * newPath.
+     * Retrieve the cached document instance for a given file.
      *
-     * @param oldPath
-     * @param newPath
+     * @param file a file in the current workspace
+     * @return null if the path cannot be found, is a directory, a binary without associated decompiler or is too large.
      */
-    public void replaceAll(SPath oldPath, SPath newPath) {
-        if (editors.containsKey(oldPath)) {
-            Editor editor = editors.remove(oldPath);
-            if (editor != null)
-                editors.put(newPath, editor);
+    @Nullable
+    public Document getDocument(
+        @NotNull
+        SPath file) {
+        final VirtualFile virtualFile = LocalFileSystem.getInstance()
+            .refreshAndFindFileByIoFile(file.getFullPath().toFile());
+
+        if (virtualFile == null) {
+            LOG.debug(
+                "Could not get document instance for " + file + ": not found");
+            return null;
         }
 
-        if (documents.containsKey(oldPath)) {
-            Document doc = documents.remove(oldPath);
+        return ApplicationManager.getApplication().runReadAction(
+            new Computable<Document>() {
 
-            if (doc != null) {
-                files.put(doc, newPath);
+                @Override
+                public Document compute() {
+                    return FileDocumentManager.getInstance()
+                        .getDocument(virtualFile);
+                }
+            });
+    }
+
+    /**
+     * Return the editor in which the given file is opened.
+     *
+     * @param file a file in the current workspace.
+     * @return null if the file cannot be found or if it is not opened in an editor.
+     */
+    @Nullable
+    public Editor getEditor(
+        @NotNull
+        SPath file) {
+        Document doc = getDocument(file);
+
+        if (doc == null) {
+            return null;
+        }
+
+        Editor[] editors = EditorFactory.getInstance()
+            .getEditors(doc, project);
+
+        if (editors.length == 0) {
+            LOG.debug("File " + file + " is not opened in an editor");
+            return null;
+        }
+
+        if (editors.length > 1) {
+            LOG.warn(editors.length + " editors linked to file " + file);
+        }
+
+        return editors[0]; // FIXME: we should return all editors and adapt uses of this method to handle them all
+    }
+
+    /**
+     * Returns the file in the workspace corresponding to the document instance.
+     *
+     * @param doc a cached document instance
+     * @return null if the document was not created from the filesystem or if the corresponding file does not belong to the current workspace.
+     */
+    @Nullable
+    public SPath getFile(
+        @NotNull
+        Document doc) {
+        VirtualFile file = FileDocumentManager.getInstance().getFile(doc);
+
+        if (file == null) {
+            LOG.debug(
+                "Document " + doc + " was not created from a virtual file");
+            return null;
+        }
+
+        String fullPath = file.getPath();
+        IProject fileProject = ((IntelliJWorkspaceImpl) workspace)
+            .getProjectForPath(fullPath);
+
+        if (fileProject == null) {
+            LOG.debug("Document " + doc
+                + " does not belong to the current workspace");
+            return null;
+        }
+
+        IPath projectRelativePath = IntelliJPathImpl.fromString(fullPath)
+            .removeFirstSegments(fileProject.getLocation().segmentCount());
+
+        return new SPath(fileProject, projectRelativePath);
+    }
+
+    /**
+     * Returns all opened editors for the current workspace.
+     */
+    public Collection<Editor> getEditors() {
+        Editor[] allEditors = EditorFactory.getInstance().getAllEditors();
+
+        Collection<Editor> editors = new ArrayList<Editor>();
+
+        for (Editor ed : allEditors) {
+            if (getFile(ed.getDocument()) != null) {
+                editors.add(ed);
             }
         }
-    }
 
-    public void unlockAllDocuments() {
-        for (Document doc : documents.values()) {
-            doc.setReadOnly(false);
-        }
-    }
-
-    public void lockAllDocuments() {
-        for (Document doc : documents.values()) {
-            doc.setReadOnly(true);
-        }
-    }
-
-    public Collection<Document> getDocuments() {
-        return documents.values();
-    }
-
-    public Document getDocument(SPath file) {
-        return documents.get(file);
-    }
-
-    public Editor getEditor(SPath file) {
-        return editors.get(file);
-    }
-
-    public SPath getFile(Document doc) {
-        return files.get(doc);
-    }
-
-    public Collection<Editor> getEditors() {
-        return editors.values();
-    }
-
-    public Set<SPath> getFiles() {
-        return documents.keySet();
+        return editors;
     }
 
     /**
-     * Clears all state.
+     * Returns all opened files in the current workspace.
      */
-    public void clear() {
-        documents.clear();
-        editors.clear();
-        files.clear();
-    }
+    public Set<SPath> getFiles() {
+        Editor[] allEditors = EditorFactory.getInstance().getAllEditors();
 
+        Set<SPath> files = new ArrayListSet<SPath>();
+
+        for (Editor ed : allEditors) {
+            SPath openedFile = getFile(ed.getDocument());
+
+            if (openedFile != null) {
+                files.add(openedFile);
+            }
+        }
+
+        return files;
+    }
 }
