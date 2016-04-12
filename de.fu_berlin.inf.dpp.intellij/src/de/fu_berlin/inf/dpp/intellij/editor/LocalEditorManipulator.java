@@ -62,7 +62,6 @@ public class LocalEditorManipulator {
             //todo: in case it is already open, need to activate only, not open
             Editor editor = projectAPI.openEditor(virtualFile);
             manager.startEditor(editor);
-            editorPool.add(path, editor);
             return editor;
         } else {
             LOG.warn("File not exist " + path);
@@ -81,7 +80,6 @@ public class LocalEditorManipulator {
             if (projectAPI.isOpen(virtualFile)) {
                 projectAPI.closeEditor(virtualFile);
             }
-            editorPool.removeEditor(path);
 
         } else {
             LOG.warn("File not exist " + path);

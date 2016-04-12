@@ -60,7 +60,6 @@ public class LocalEditorHandler {
         if (path == null)
             return;
 
-        editorPool.add(path, projectAPI.getActiveEditor());
         manager.startEditor(projectAPI.getActiveEditor());
     }
 
@@ -73,7 +72,6 @@ public class LocalEditorHandler {
     public void closeEditor(VirtualFile virtualFile) {
         SPath path = toPath(virtualFile);
         if (path != null) {
-            editorPool.removeEditor(path);
             manager.generateEditorClosed(path);
         }
     }

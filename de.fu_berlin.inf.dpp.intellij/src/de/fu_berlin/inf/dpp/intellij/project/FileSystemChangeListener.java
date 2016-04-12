@@ -130,7 +130,6 @@ public class FileSystemChangeListener extends AbstractStoppableListener
 
         IActivity activity = new FileActivity(user, FileActivity.Type.MOVED,
             newSPath, oldSPath, bytes, charset, FileActivity.Purpose.ACTIVITY);
-        editorManager.replaceAllEditorsForPath(oldSPath, newSPath);
 
         project.addFile(newSPath.getFile().getLocation().toFile());
         oldProject.removeFile(oldSPath.getFile().getLocation().toFile());
@@ -288,7 +287,6 @@ public class FileSystemChangeListener extends AbstractStoppableListener
         }
 
         project.removeFile(file);
-        editorManager.removeAllEditorsForPath(spath);
 
         resourceManager.internalFireActivity(activity);
     }
