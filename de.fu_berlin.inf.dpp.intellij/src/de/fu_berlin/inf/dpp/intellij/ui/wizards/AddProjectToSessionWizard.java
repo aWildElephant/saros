@@ -397,8 +397,6 @@ public class AddProjectToSessionWizard extends Wizard {
             String projectID = entry.getKey();
             IProject project = entry.getValue();
 
-            FileListDiff diff;
-
             FileList remoteFileList = negotiation.getRemoteFileList(projectID);
 
             try {
@@ -421,16 +419,13 @@ public class AddProjectToSessionWizard extends Wizard {
                     .createFileList(project, null, checksumCache, null,
                         new SubProgressMonitor(monitor, 1,
                             SubProgressMonitor.SUPPRESS_SETTASKNAME));
-                diff = FileListDiff.diff(localFileList, remoteFileList);
+                FileListDiff diff = FileListDiff.diff(localFileList, remoteFileList);
 
                 if (negotiation.isPartialRemoteProject(projectID)) {
                     diff.clearRemovedPaths();
                 }
 
-                if (!diff.getRemovedPaths().isEmpty() || !diff.getAlteredPaths()
-                    .isEmpty()) {
-                    modifiedResources.put(project.getName(), diff);
-                }
+                modifiedResources.put(project.getName(), diff);
 
             } catch (IOException e) {
                 LOG.warn("could not refresh project: " + project, e);
