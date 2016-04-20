@@ -22,6 +22,9 @@
 
 package de.fu_berlin.inf.dpp.intellij.ui.wizards;
 
+import com.intellij.openapi.progress.PerformInBackgroundOption;
+import com.intellij.openapi.progress.ProgressIndicator;
+import com.intellij.openapi.progress.Task;
 import com.intellij.util.ui.UIUtil;
 import de.fu_berlin.inf.dpp.filesystem.IChecksumCache;
 import de.fu_berlin.inf.dpp.filesystem.IProject;
@@ -248,22 +251,23 @@ public class AddProjectToSessionWizard extends Wizard {
      * On success, a success notification is displayed, on error, a dialog is shown.
      */
     private void triggerProjectNegotiation() {
+        new Task.Backgroundable(null, "Sharing project...", false, PerformInBackgroundOption.DEAF) {
 
-        JobWithStatus job = new JobWithStatus() {
             @Override
-            public void run() {
-                status = negotiation
+            public void run(ProgressIndicator progressIndicator) {
+                ProjectNegotiation.Status status = negotiation
                     .run(localProjects, new NullProgressMonitor(), false);
+
+                if (status != ProjectNegotiation.Status.OK) {
+                    DialogUtils.showError(null, "Error during project negotiation",
+                        "The project could not be shared");
+                } else {
+                    NotificationPanel.showNotification("Project shared",
+                        "Project successfully shared");
+                }
             }
-        };
-        runTask(job, "Sharing project...");
-        if (job.status != ProjectNegotiation.Status.OK) {
-            DialogUtils.showError(null, "Error during project negotiation",
-                "The project could not be shared");
-        } else {
-            NotificationPanel.showNotification("Project shared",
-                "Project successfully shared");
-        }
+        }.queue();
+
         close();
     }
 

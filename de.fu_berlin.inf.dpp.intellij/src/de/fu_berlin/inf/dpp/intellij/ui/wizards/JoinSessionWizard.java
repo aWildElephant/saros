@@ -22,9 +22,11 @@
 
 package de.fu_berlin.inf.dpp.intellij.ui.wizards;
 
+import com.intellij.openapi.progress.PerformInBackgroundOption;
+import com.intellij.openapi.progress.ProgressIndicator;
+import com.intellij.openapi.progress.Task;
 import de.fu_berlin.inf.dpp.intellij.ui.Messages;
 import de.fu_berlin.inf.dpp.intellij.ui.util.DialogUtils;
-import de.fu_berlin.inf.dpp.intellij.ui.util.JobWithStatus;
 import de.fu_berlin.inf.dpp.intellij.ui.wizards.pages.HeaderPanel;
 import de.fu_berlin.inf.dpp.intellij.ui.wizards.pages.InfoPage;
 import de.fu_berlin.inf.dpp.intellij.ui.wizards.pages.PageActionListener;
@@ -32,9 +34,11 @@ import de.fu_berlin.inf.dpp.monitoring.IProgressMonitor;
 import de.fu_berlin.inf.dpp.monitoring.NullProgressMonitor;
 import de.fu_berlin.inf.dpp.negotiation.IncomingSessionNegotiation;
 import de.fu_berlin.inf.dpp.negotiation.NegotiationTools.CancelLocation;
+import de.fu_berlin.inf.dpp.negotiation.ProjectNegotiation;
 import de.fu_berlin.inf.dpp.net.xmpp.JID;
 import de.fu_berlin.inf.dpp.util.ThreadUtils;
 import org.apache.log4j.Logger;
+import org.jetbrains.annotations.NotNull;
 
 import java.text.MessageFormat;
 
@@ -100,35 +104,38 @@ public class JoinSessionWizard extends Wizard {
     }
 
     /**
-     * Runs {@link IncomingSessionNegotiation#accept(IProgressMonitor)} with
-     * {@link #runTask(Runnable, String)}. If the result is a cancel or
-     * error status, it displays an error message accordingly.
+     * Runs {@link IncomingSessionNegotiation#accept(IProgressMonitor)}.
+     * If the result is a cancel or error status, it displays an error message
+     * accordingly.
      */
     public void joinSession() {
+        new Task.Backgroundable(null, "Joining session...", false,
+            PerformInBackgroundOption.DEAF) {
 
-        JobWithStatus job = new JobWithStatus() {
             @Override
-            public void run() {
-                status = negotiation.accept(new NullProgressMonitor());
+            public void run(
+                @NotNull
+                ProgressIndicator progressIndicator) {
+                // TODO: wrap the ProgressIndicator in a class implementing IProgressMonitor and pass it to the negotiation
+                ProjectNegotiation.Status status = negotiation
+                    .accept(new NullProgressMonitor());
+
+                switch (status) {
+                case OK:
+                    break;
+                case CANCEL:
+                case ERROR:
+                    showCancelMessage(negotiation.getPeer(),
+                        negotiation.getErrorMessage(), CancelLocation.LOCAL);
+                    break;
+                case REMOTE_CANCEL:
+                case REMOTE_ERROR:
+                    showCancelMessage(negotiation.getPeer(),
+                        negotiation.getErrorMessage(), CancelLocation.REMOTE);
+                    break;
+                }
             }
-        };
-
-        runTask(job, "Joining session...");
-
-        switch (job.status) {
-        case OK:
-            break;
-        case CANCEL:
-        case ERROR:
-            showCancelMessage(negotiation.getPeer(),
-                negotiation.getErrorMessage(), CancelLocation.LOCAL);
-            break;
-        case REMOTE_CANCEL:
-        case REMOTE_ERROR:
-            showCancelMessage(negotiation.getPeer(),
-                negotiation.getErrorMessage(), CancelLocation.REMOTE);
-            break;
-        }
+        }.queue();
 
         close();
     }
