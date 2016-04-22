@@ -117,8 +117,10 @@ public class SharedResourcesManager extends AbstractActivityProducer
         this.fileReplacementInProgressObservable = fileReplacementInProgressObservable;
         this.localEditorHandler = localEditorHandler;
         this.localEditorManipulator = localEditorManipulator;
-        fileSystemListener = new FileSystemChangeListener(this, editorManager);
         this.intelliJWorkspaceImpl = intelliJWorkspaceImpl;
+
+        fileSystemListener = new FileSystemChangeListener(this, editorManager);
+        sarosSession.getStopManager().addBlockable(fileSystemListener);
     }
 
     private final IActivityConsumer consumer = new AbstractActivityConsumer() {

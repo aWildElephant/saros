@@ -48,6 +48,7 @@ import de.fu_berlin.inf.dpp.intellij.project.filesystem.IntelliJPathImpl;
 import de.fu_berlin.inf.dpp.intellij.project.filesystem.IntelliJProjectImpl;
 import de.fu_berlin.inf.dpp.intellij.project.filesystem.IntelliJWorkspaceImpl;
 import de.fu_berlin.inf.dpp.session.User;
+import de.fu_berlin.inf.dpp.synchronize.Blockable;
 import org.apache.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
 
@@ -66,7 +67,7 @@ import java.util.Set;
  * {@link IActivity}-creation on the {@link SharedResourcesManager}.
  */
 public class FileSystemChangeListener extends AbstractStoppableListener
-    implements VirtualFileListener {
+    implements VirtualFileListener, Blockable {
 
     private static final Logger LOG = Logger
         .getLogger(FileSystemChangeListener.class);
@@ -533,5 +534,27 @@ public class FileSystemChangeListener extends AbstractStoppableListener
 
     private boolean isValidProject(IntelliJProjectImpl project) {
         return project != null && project.exists();
+    }
+
+    @Override
+    public void block() {
+        if (intelliJWorkspaceImpl == null) {
+            LOG.debug("no workspace set, no need to block");
+            return;
+        }
+
+        LOG.debug("blocked");
+        intelliJWorkspaceImpl.removeResourceListener(this);
+    }
+
+    @Override
+    public void unblock() {
+        if (intelliJWorkspaceImpl == null) {
+            LOG.debug("no workspace set, no need to unblock");
+            return;
+        }
+
+        LOG.debug("unblocked");
+        intelliJWorkspaceImpl.addResourceListener(this);
     }
 }
