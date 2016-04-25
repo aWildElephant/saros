@@ -25,6 +25,7 @@ import de.fu_berlin.inf.dpp.intellij.project.filesystem.IntelliJFileImpl;
 import de.fu_berlin.inf.dpp.intellij.project.filesystem.IntelliJPathImpl;
 import de.fu_berlin.inf.dpp.intellij.project.filesystem.IntelliJProjectImpl;
 import de.fu_berlin.inf.dpp.intellij.project.filesystem.IntelliJWorkspaceImpl;
+import de.fu_berlin.inf.dpp.observables.FileReplacementInProgressObservable;
 import de.fu_berlin.inf.dpp.session.User;
 import org.apache.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
@@ -56,10 +57,13 @@ public class FileSystemChangeListener extends AbstractStoppableListener
     private final List<File> incomingFilesToFilterFor = new ArrayList<File>();
 
     private final Set<VirtualFile> newFiles = new HashSet<VirtualFile>();
+    private final FileReplacementInProgressObservable replacementObservable;
 
     public FileSystemChangeListener(SharedResourcesManager resourceManager,
-        EditorManager editorManager) {
+        EditorManager editorManager,
+        FileReplacementInProgressObservable replacementObservable) {
         super(editorManager);
+        this.replacementObservable = replacementObservable;
         this.resourceManager = resourceManager;
     }
 
@@ -148,6 +152,11 @@ public class FileSystemChangeListener extends AbstractStoppableListener
     public void contentsChanged(
         @NotNull
         VirtualFileEvent virtualFileEvent) {
+
+        if (replacementObservable.isReplacementInProgress()) {
+            return;
+        }
+
         VirtualFile virtualFile = virtualFileEvent.getFile();
         IntelliJProjectImpl project = intelliJWorkspaceImpl
             .getProjectForPath(virtualFile.getPath());
@@ -194,7 +203,7 @@ public class FileSystemChangeListener extends AbstractStoppableListener
     public void fileCreated(
         @NotNull
         VirtualFileEvent virtualFileEvent) {
-        if (!enabled) {
+        if (!enabled || replacementObservable.isReplacementInProgress()) {
             return;
         }
 
@@ -254,7 +263,7 @@ public class FileSystemChangeListener extends AbstractStoppableListener
     public void fileDeleted(
         @NotNull
         VirtualFileEvent virtualFileEvent) {
-        if (!enabled) {
+        if (!enabled || replacementObservable.isReplacementInProgress()) {
             return;
         }
 
@@ -296,7 +305,7 @@ public class FileSystemChangeListener extends AbstractStoppableListener
     public void fileMoved(
         @NotNull
         VirtualFileMoveEvent virtualFileMoveEvent) {
-        if (!enabled) {
+        if (!enabled || replacementObservable.isReplacementInProgress()) {
             return;
         }
 
@@ -346,7 +355,7 @@ public class FileSystemChangeListener extends AbstractStoppableListener
     public void propertyChanged(
         @NotNull
         VirtualFilePropertyEvent filePropertyEvent) {
-        if (!enabled) {
+        if (!enabled || replacementObservable.isReplacementInProgress()) {
             return;
         }
 
@@ -386,7 +395,7 @@ public class FileSystemChangeListener extends AbstractStoppableListener
     public void fileCopied(
         @NotNull
         VirtualFileCopyEvent virtualFileCopyEvent) {
-        if (!enabled) {
+        if (!enabled || replacementObservable.isReplacementInProgress()) {
             return;
         }
 

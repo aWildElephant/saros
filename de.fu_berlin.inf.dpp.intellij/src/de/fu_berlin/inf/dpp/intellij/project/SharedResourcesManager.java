@@ -95,7 +95,8 @@ public class SharedResourcesManager extends AbstractActivityProducer
         this.fileReplacementInProgressObservable = fileReplacementInProgressObservable;
         this.localEditorHandler = localEditorHandler;
         this.localEditorManipulator = localEditorManipulator;
-        fileSystemListener = new FileSystemChangeListener(this, editorManager);
+        fileSystemListener = new FileSystemChangeListener(this, editorManager,
+            fileReplacementInProgressObservable);
         this.intelliJWorkspaceImpl = intelliJWorkspaceImpl;
     }
 

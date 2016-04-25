@@ -34,6 +34,7 @@ import de.fu_berlin.inf.dpp.intellij.editor.colorstorage.ColorModel;
 import de.fu_berlin.inf.dpp.intellij.project.filesystem.IntelliJWorkspaceImpl;
 import de.fu_berlin.inf.dpp.intellij.project.filesystem.ResourceConverter;
 import de.fu_berlin.inf.dpp.intellij.ui.util.NotificationPanel;
+import de.fu_berlin.inf.dpp.observables.FileReplacementInProgressObservable;
 import de.fu_berlin.inf.dpp.session.AbstractActivityConsumer;
 import de.fu_berlin.inf.dpp.session.AbstractActivityProducer;
 import de.fu_berlin.inf.dpp.session.AbstractSessionListener;
@@ -312,9 +313,16 @@ public class EditorManager extends AbstractActivityProducer
 
         @Override
         public void projectResourcesAvailable(String projectID) {
+            /* Refresh the file system synchronously so that we are sure that
+             * - resources exist in the VFS,
+             * - events have been fired for eventual modifications.
+             */
+            LocalFileSystem.getInstance().refresh(false);
+
             if (!isFollowing()) {
                 return;
             }
+
             executeInUIThreadAsynchronous(new Runnable() {
                 @Override
                 public void run() {
@@ -337,10 +345,6 @@ public class EditorManager extends AbstractActivityProducer
 
             remoteEditorManager = new RemoteEditorManager(session);
             remoteWriteAccessManager = new RemoteWriteAccessManager(session);
-
-            //TODO: Test, whether this leads to problems because it is not called
-            //from the UI thread.
-            LocalFileSystem.getInstance().refresh(true);
         }
 
         private void endSession() {
@@ -471,7 +475,8 @@ public class EditorManager extends AbstractActivityProducer
     public EditorManager(ISarosSessionManager sessionManager,
         LocalEditorHandler localEditorHandler,
         LocalEditorManipulator localEditorManipulator, IWorkspace workspace,
-        Project project) {
+        Project project,
+        FileReplacementInProgressObservable replacementObservable) {
 
         remoteEditorManager = new RemoteEditorManager(session);
         sessionManager.addSessionLifecycleListener(sessionLifecycleListener);
@@ -482,7 +487,8 @@ public class EditorManager extends AbstractActivityProducer
         this.project = project;
         this.editorPool = new EditorPool(workspace, project);
 
-        documentListener = new StoppableDocumentListener(this);
+        documentListener = new StoppableDocumentListener(this,
+            replacementObservable);
         fileListener = new StoppableEditorFileListener(this);
         selectionListener = new StoppableSelectionListener(this);
         viewportListener = new StoppableViewPortListener(this);

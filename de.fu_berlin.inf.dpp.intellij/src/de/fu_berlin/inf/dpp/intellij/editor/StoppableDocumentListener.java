@@ -4,6 +4,7 @@ import com.intellij.openapi.editor.EditorFactory;
 import com.intellij.openapi.editor.event.DocumentEvent;
 import com.intellij.openapi.editor.event.DocumentListener;
 import de.fu_berlin.inf.dpp.activities.SPath;
+import de.fu_berlin.inf.dpp.observables.FileReplacementInProgressObservable;
 import org.apache.log4j.Logger;
 
 /**
@@ -17,12 +18,16 @@ import org.apache.log4j.Logger;
 public class StoppableDocumentListener extends AbstractStoppableListener
     implements DocumentListener {
 
+    private final FileReplacementInProgressObservable replacementObservable;
     private static final Logger LOG = Logger
         .getLogger(StoppableDocumentListener.class);
 
-    public StoppableDocumentListener(EditorManager editorManager) {
+    public StoppableDocumentListener(EditorManager editorManager,
+        FileReplacementInProgressObservable replacementObservable) {
         super(editorManager);
         super.setEnabled(false);
+
+        this.replacementObservable = replacementObservable;
     }
 
     /**
@@ -33,6 +38,10 @@ public class StoppableDocumentListener extends AbstractStoppableListener
      */
     @Override
     public void beforeDocumentChange(DocumentEvent event) {
+        if (!enabled || replacementObservable.isReplacementInProgress()) {
+            return;
+        }
+
         // We rely on the editor pool to filter files that are not shared.
         SPath path = editorManager.getEditorPool().getFile(event.getDocument());
         if (path == null) {
