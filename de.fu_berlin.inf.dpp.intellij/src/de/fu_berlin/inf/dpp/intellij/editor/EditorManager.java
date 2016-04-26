@@ -152,7 +152,7 @@ public class EditorManager extends AbstractActivityProducer
 
             SPath path = editorActivity.getPath();
 
-            LOG.debug(path + " text edit activity received " + editorActivity);
+            LOG.debug(path + " text edit activity received"); // FIXME: we do not display the text edit because it might have crlf endings and log4j doesn't like that at all
 
             User user = editorActivity.getSource();
             ColorModel colorModel = ColorManager
