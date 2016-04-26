@@ -1,5 +1,6 @@
 package de.fu_berlin.inf.dpp.intellij.project;
 
+import com.intellij.openapi.editor.event.DocumentEvent;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.openapi.vfs.VirtualFileCopyEvent;
 import com.intellij.openapi.vfs.VirtualFileEvent;
@@ -42,6 +43,8 @@ import java.util.Set;
  * <p/>
  * It filters for files that are shared and calls the corresponding methods for
  * {@link IActivity}-creation on the {@link SharedResourcesManager}.
+ *
+ * @see StoppableDocumentListener
  */
 public class FileSystemChangeListener extends AbstractStoppableListener
     implements VirtualFileListener {
@@ -138,60 +141,34 @@ public class FileSystemChangeListener extends AbstractStoppableListener
     }
 
     /**
-     * Calls {@link EditorManager#sendTemplateContent(SPath, String)} for files
-     * that were created with initial content. For other content changes itm
-     * {@link StoppableDocumentListener} is used.
+     * This is called after the file was modified on disk.
      * <p/>
-     * This gets called for all files in the application, after they were changed.
-     * This includes meta-files like workspace.xml.
+     * We use the DocumentListener interface to capture modifications of the files' contents.
      *
-     * @param virtualFileEvent
+     * @see StoppableDocumentListener#documentChanged(DocumentEvent)
      */
     @Override
     public void contentsChanged(
         @NotNull
         VirtualFileEvent virtualFileEvent) {
-        VirtualFile virtualFile = virtualFileEvent.getFile();
-        IntelliJProjectImpl project = intelliJWorkspaceImpl
-            .getProjectForPath(virtualFile.getPath());
 
-        if (!isValidProject(project)) {
+        if (virtualFileEvent.isFromSave()) {
             return;
         }
 
-        IFile file = new IntelliJFileImpl(project,
-            new File(virtualFile.getPath()));
-
-        if (!resourceManager.getSession().isShared(file) && !newFiles
-            .remove(virtualFile)) {
-            return;
-        }
-
-        SPath spath = new SPath(project, file.getProjectRelativePath());
-
-        //Files created from templates have initial content and are opened in
-        // an editor, but do not have a DocumentListener. Their initial content
-        // is transferred here, because the DocumentListener is added after
-        // it was inserted
-        if (editorManager.isOpenedInEditor(spath)) {
-            try {
-                byte[] content = virtualFile.contentsToByteArray();
-                String initialContent = new String(content, getEncoding(file));
-
-                if (!initialContent.isEmpty()) {
-                    editorManager.sendTemplateContent(spath, initialContent);
-                }
-            } catch (IOException e) {
-                LOG.error("Could not access newly created file: " + file, e);
-            }
-        }
+        LOG.warn(
+            "Ignored contentsChanged event that does not come from the save of a document: "
+                + virtualFileEvent);
     }
 
     /**
-     * This is called after a file was created on disk, but before optional content
-     * (e.g. templates) are inserted.
+     * Handle a creation of a file or folder.
+     * <p/>
+     * Check if the resource should belong to the current project. If this is
+     * the case, fire an activity and add the resource to the project.
      *
-     * @param virtualFileEvent
+     * @see FileActivity#created(User, SPath, byte[], String, FileActivity.Purpose)
+     * @see FolderCreatedActivity
      */
     @Override
     public void fileCreated(
@@ -240,10 +217,6 @@ public class FileSystemChangeListener extends AbstractStoppableListener
             charset = virtualFileEvent.getFile().getCharset().name();
             activity = FileActivity.created(user, spath, bytes, charset,
                 FileActivity.Purpose.ACTIVITY);
-
-            //If the file was created with a template, it is filled only later
-            //so we check for newly created files' content in {@link #contentsChanged},
-            newFiles.add(virtualFileEvent.getFile());
         } else {
             activity = new FolderCreatedActivity(user, spath);
         }
@@ -253,6 +226,9 @@ public class FileSystemChangeListener extends AbstractStoppableListener
         resourceManager.internalFireActivity(activity);
     }
 
+    /**
+     * Handle the deletion of a file.
+     */
     @Override
     public void fileDeleted(
         @NotNull

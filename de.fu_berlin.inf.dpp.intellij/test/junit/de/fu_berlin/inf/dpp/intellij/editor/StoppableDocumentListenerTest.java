@@ -5,6 +5,7 @@ import com.intellij.mock.MockEditorFactory;
 import com.intellij.openapi.editor.EditorFactory;
 import com.intellij.openapi.editor.event.DocumentListener;
 import com.intellij.openapi.editor.event.EditorEventMulticaster;
+import de.fu_berlin.inf.dpp.observables.FileReplacementInProgressObservable;
 import org.jetbrains.annotations.NotNull;
 import org.junit.Before;
 import org.junit.Test;
