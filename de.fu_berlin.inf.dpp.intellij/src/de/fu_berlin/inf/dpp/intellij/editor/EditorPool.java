@@ -78,7 +78,7 @@ public class EditorPool {
         @NotNull
         SPath file) {
         final VirtualFile virtualFile = LocalFileSystem.getInstance()
-            .refreshAndFindFileByIoFile(file.getFullPath().toFile());
+            .refreshAndFindFileByIoFile(file.getProject().getLocation().append(file.getProjectRelativePath()).toFile());
 
         if (virtualFile == null) {
             LOG.debug(

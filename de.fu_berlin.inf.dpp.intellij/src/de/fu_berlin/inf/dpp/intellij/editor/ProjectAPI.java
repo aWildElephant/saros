@@ -147,7 +147,7 @@ public class ProjectAPI {
         application.invokeAndWait(new WriteAction(new Runnable() {
             @Override
             public void run() {
-                fileDocumentManager.saveDocument(doc);
+                fileDocumentManager.saveDocumentAsIs(doc);
             }
         }), ModalityState.NON_MODAL);
 

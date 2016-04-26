@@ -201,10 +201,11 @@ public class SharedResourcesManager extends AbstractActivityProducer
     private void handleFileMove(FileActivity activity) throws IOException {
         //FIXME: This only works by accident because ProjectImpl.getFullPath is broken
         //this will come in the net patch
-        IPath newFilePath = activity.getPath().getFullPath();
+        SPath path = activity.getPath();
+        IPath newFilePath = path.getProject().getLocation().append(path.getProjectRelativePath());
         IResource oldResource = activity.getOldPath().getResource();
 
-        FileUtils.mkdirs(activity.getPath().getResource());
+        FileUtils.mkdirs(path.getResource()); // path.getResource() is null since it uses IProject#findMember and the resource should not exist yet.
         FileUtils.move(newFilePath, oldResource);
 
         if (activity.getContent() == null)

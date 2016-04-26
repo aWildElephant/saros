@@ -69,6 +69,10 @@ public class IntelliJWorkspaceImpl implements IWorkspace {
                     return (IntelliJProjectImpl) sharedProject;
                 }
             }
+            if (!session.isHost() && getLocation().isPrefixOf(resourcePath)) { // Dirty fix, better to implement the out-of-project-basedir scheme
+                // Create an IProject at the base of the IntelliJ project, with a name matching the given path
+                return new IntelliJProjectImpl(this, new File(resourcePath.removeFirstSegments(getLocation().segmentCount()).segment(0)));
+            }
         }
 
         /* If there is no active session or the given path do not belong to any shared project,

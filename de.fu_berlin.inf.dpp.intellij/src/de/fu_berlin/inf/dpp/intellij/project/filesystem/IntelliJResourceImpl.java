@@ -150,12 +150,6 @@ public abstract class IntelliJResourceImpl implements IResource {
 
         final IPath absoluteDestination = destination.makeAbsolute();
 
-        if (!workspace.getLocation().isPrefixOf(absoluteDestination)) {
-            throw new IOException(
-                "Destination does not belong in current workspace "
-                    + workspace);
-        }
-
         if (getLocation().isPrefixOf(absoluteDestination)) {
             throw new IOException(
                 "Current location of the resource must no be a prefix of the destination");

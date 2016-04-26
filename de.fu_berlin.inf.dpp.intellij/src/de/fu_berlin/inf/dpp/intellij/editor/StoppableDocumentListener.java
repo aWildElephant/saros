@@ -26,18 +26,36 @@ public class StoppableDocumentListener extends AbstractStoppableListener
     }
 
     /**
+     * Does nothing.
+     */
+    @Override
+    public void beforeDocumentChange(DocumentEvent event) {
+        // Nothing to do
+    }
+
+    /**
      * Calls
      * {@link EditorManager#generateTextEdit(int, String, String, SPath)}
      *
      * @param event
      */
     @Override
-    public void beforeDocumentChange(DocumentEvent event) {
-        // We rely on the editor pool to filter files that are not shared.
+    public void documentChanged(DocumentEvent event) {
+        if (!enabled) {
+            return;
+        }
+
+        // Get the SPath from the EditorPool, but the method do not actually belong to the EditorPool
         SPath path = editorManager.getEditorPool().getFile(event.getDocument());
+
         if (path == null) {
             LOG.debug("Event for document " + event.getDocument()
                     + " ignored: document is not known to the editor pool");
+            return;
+        }
+
+        if (!editorManager.getSession().isShared(path.getResource())) {
+            LOG.debug("Event for document " + event.getDocument() + " ignored: resource is not shared");
             return;
         }
 
@@ -45,17 +63,7 @@ public class StoppableDocumentListener extends AbstractStoppableListener
         String replacedText = event.getOldFragment().toString();
 
         editorManager
-            .generateTextEdit(event.getOffset(), newText, replacedText, path);
-    }
-
-    /**
-     * Does nothing.
-     *
-     * @param event
-     */
-    @Override
-    public void documentChanged(DocumentEvent event) {
-        // do nothing. We handled everything in documentAboutToBeChanged
+                .generateTextEdit(event.getOffset(), newText, replacedText, path);
     }
 
     @Override
