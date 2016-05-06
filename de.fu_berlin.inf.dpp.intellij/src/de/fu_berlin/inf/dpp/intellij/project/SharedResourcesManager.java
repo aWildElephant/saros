@@ -85,6 +85,7 @@ public class SharedResourcesManager extends AbstractActivityProducer
             public void run() {
                 sarosSession.addActivityProducer(SharedResourcesManager.this);
                 sarosSession.addActivityConsumer(consumer);
+                sarosSession.getStopManager().addBlockable(fileSystemListener);
                 intelliJWorkspaceImpl.addResourceListener(fileSystemListener);
 
             }
@@ -99,6 +100,7 @@ public class SharedResourcesManager extends AbstractActivityProducer
             public void run() {
                 intelliJWorkspaceImpl
                     .removeResourceListener(fileSystemListener);
+                sarosSession.getStopManager().removeBlockable(fileSystemListener);
                 sarosSession
                     .removeActivityProducer(SharedResourcesManager.this);
                 sarosSession.removeActivityConsumer(consumer);
@@ -120,7 +122,6 @@ public class SharedResourcesManager extends AbstractActivityProducer
         this.intelliJWorkspaceImpl = intelliJWorkspaceImpl;
 
         fileSystemListener = new FileSystemChangeListener(this, editorManager);
-        sarosSession.getStopManager().addBlockable(fileSystemListener);
     }
 
     private final IActivityConsumer consumer = new AbstractActivityConsumer() {
