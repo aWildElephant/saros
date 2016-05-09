@@ -7,6 +7,7 @@ import com.intellij.openapi.vfs.LocalFileSystem;
 import com.intellij.openapi.vfs.VirtualFile;
 import de.fu_berlin.inf.dpp.activities.SPath;
 import de.fu_berlin.inf.dpp.filesystem.IPath;
+import de.fu_berlin.inf.dpp.filesystem.IProject;
 import de.fu_berlin.inf.dpp.filesystem.IResource;
 import de.fu_berlin.inf.dpp.filesystem.IResourceAttributes;
 import org.jetbrains.annotations.NotNull;
@@ -23,11 +24,11 @@ public abstract class IntelliJResourceImpl implements IResource {
     //TODO resolve charset issue by reading real data
     public static final String DEFAULT_CHARSET = "utf8";
 
-    protected IntelliJProjectImpl project;
+    protected IProject project;
     protected IPath projectRelativePath;
     private IResourceAttributes attributes;
 
-    protected IntelliJResourceImpl(IntelliJProjectImpl project,
+    protected IntelliJResourceImpl(IProject project,
         File file) {
 
         if (file.isAbsolute()) {
@@ -75,7 +76,7 @@ public abstract class IntelliJResourceImpl implements IResource {
     }
 
     @Override
-    public IntelliJProjectImpl getProject() {
+    public IProject getProject() {
         return project;
     }
 

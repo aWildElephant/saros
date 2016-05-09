@@ -2,6 +2,7 @@ package de.fu_berlin.inf.dpp.intellij.project.filesystem;
 
 import com.intellij.openapi.util.ThrowableComputable;
 import de.fu_berlin.inf.dpp.filesystem.IFile;
+import de.fu_berlin.inf.dpp.filesystem.IProject;
 import de.fu_berlin.inf.dpp.filesystem.IResource;
 import org.apache.log4j.Logger;
 
@@ -17,7 +18,7 @@ public class IntelliJFileImpl extends IntelliJResourceImpl implements IFile {
 
     private static Logger LOG = Logger.getLogger(IntelliJFileImpl.class);
 
-    public IntelliJFileImpl(IntelliJProjectImpl project, File file) {
+    public IntelliJFileImpl(IProject project, File file) {
         super(project, file);
     }
 

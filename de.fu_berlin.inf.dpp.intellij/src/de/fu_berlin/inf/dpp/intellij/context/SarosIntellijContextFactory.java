@@ -101,7 +101,6 @@ public class SarosIntellijContextFactory extends AbstractSarosContextFactory {
 
         Component.create(ICollaborationUtils.class,
             IntelliJCollaborationUtilsImpl.class),
-        Component.create(IWorkspaceRoot.class, IntelliJWorkspaceRootImpl.class),
 
         // Proxy Support for the XMPP server connection
         Component.create(IProxyResolver.class, NullProxyResolver.class),
@@ -120,12 +119,14 @@ public class SarosIntellijContextFactory extends AbstractSarosContextFactory {
     public void createComponents(MutablePicoContainer container) {
 
         IWorkspace workspace = new IntelliJWorkspaceImpl(project);
+        IWorkspaceRoot workspaceRoot = new IntelliJWorkspaceRootImpl(workspace);
         FileUtils.workspace = workspace;
 
         // Saros Core PathIntl Support
         container.addComponent(IPathFactory.class, new PathFactory());
 
         container.addComponent(IWorkspace.class, workspace);
+        container.addComponent(IWorkspaceRoot.class, workspaceRoot);
         container.addComponent(Project.class, project);
 
         for (Component component : Arrays.asList(components)) {
