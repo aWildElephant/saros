@@ -29,7 +29,7 @@ public class IntelliJFileImplTest extends AbstractResourceTest {
     public void testCreate() throws IOException {
         mockApplicationManager();
         mockFileSystem();
-        IFile file = new IntelliJFileImpl(getMockProject(),
+        IFile file = new IntelliJFileImpl(getMockWorkspace(),
             new File(TEST_FILE_NAME));
 
         file.create(new ByteArrayInputStream(new byte[] {}), false);
@@ -62,6 +62,7 @@ public class IntelliJFileImplTest extends AbstractResourceTest {
 
     @Test
     public void testExists() throws Exception {
+        mockFileSystem();
         IFile file = createTestFile();
 
         assertTrue(file.exists());
@@ -97,8 +98,8 @@ public class IntelliJFileImplTest extends AbstractResourceTest {
     }
 
     private IntelliJFileImpl createTestFile() throws IOException {
-        folder.newFile(TEST_PROJECT_NAME + "/" + TEST_FILE_NAME);
-        return new IntelliJFileImpl(getMockProject(), new File(TEST_FILE_NAME));
+        folder.newFile(RELATIVE_TEST_RESOURCE_PATH);
+        return new IntelliJFileImpl(getMockWorkspace(), new File(RELATIVE_TEST_RESOURCE_PATH));
     }
 
     /* This method do not use IntelliJFileImpl#setContents since the VFS is

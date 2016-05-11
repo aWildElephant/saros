@@ -8,7 +8,10 @@ import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.ThrowableComputable;
 import com.intellij.openapi.vfs.LocalFileSystem;
 import com.intellij.openapi.vfs.VirtualFile;
+import com.intellij.openapi.vfs.VirtualFileListener;
 import com.intellij.util.messages.MessageBusFactory;
+import de.fu_berlin.inf.dpp.session.ISarosSessionManager;
+import de.fu_berlin.inf.dpp.session.SarosSessionManager;
 import org.easymock.IAnswer;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -45,13 +48,19 @@ public class AbstractResourceTest {
         folder.newFolder(TEST_PROJECT_NAME);
     }
 
-    protected IntelliJProjectImpl getMockProject() {
+    private ISarosSessionManager getMockSessionManager() {
+        return new SarosSessionManager(null, null, null, null, null, null);
+    }
+
+    protected IntelliJWorkspaceImpl getMockWorkspace() {
         Project project = createNiceMock(Project.class);
         expect(project.getBasePath())
-            .andReturn(folder.getRoot().getAbsolutePath());
+            .andReturn(folder.getRoot().getAbsolutePath()).anyTimes();
+        expect(project.getBaseDir())
+            .andReturn(new VirtualFileMock(folder.getRoot())).anyTimes();
         replay(project);
 
-        return new IntelliJProjectImpl(project, TEST_PROJECT_NAME);
+        return new IntelliJWorkspaceImpl(project, getMockSessionManager());
     }
 
     protected void mockFileSystem() {
@@ -73,6 +82,20 @@ public class AbstractResourceTest {
                     @NotNull
                     String path) {
                     return new VirtualFileMock(new File(path));
+                }
+
+                @Override
+                public void addVirtualFileListener(
+                    @NotNull
+                    VirtualFileListener listener) {
+                    // NOP
+                }
+
+                @Override
+                public void removeVirtualFileListener(
+                    @NotNull
+                    VirtualFileListener listener) {
+                    // NOP
                 }
             }).anyTimes();
 

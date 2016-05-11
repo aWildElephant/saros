@@ -30,7 +30,7 @@ public class IntelliJFolderImplTest extends AbstractResourceTest {
         mockApplicationManager();
         mockFileSystem();
 
-        IFolder folder = new IntelliJFolderImpl(getMockProject(),
+        IFolder folder = new IntelliJFolderImpl(getMockWorkspace(),
             new File(TEST_FOLDER_NAME));
 
         folder.create(false, false);
@@ -74,7 +74,7 @@ public class IntelliJFolderImplTest extends AbstractResourceTest {
         folder.newFile(
             TEST_PROJECT_NAME + '/' + TEST_FOLDER_NAME + '/' + CHILD_FILE_NAME);
 
-        return new IntelliJFolderImpl(getMockProject(),
+        return new IntelliJFolderImpl(getMockWorkspace(),
             new File(TEST_FOLDER_NAME));
     }
 }

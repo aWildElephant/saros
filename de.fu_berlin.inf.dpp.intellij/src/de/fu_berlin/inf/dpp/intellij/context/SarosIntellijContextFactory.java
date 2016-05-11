@@ -118,16 +118,12 @@ public class SarosIntellijContextFactory extends AbstractSarosContextFactory {
     @Override
     public void createComponents(MutablePicoContainer container) {
 
-        IWorkspace workspace = new IntelliJWorkspaceImpl(project);
-        IWorkspaceRoot workspaceRoot = new IntelliJWorkspaceRootImpl(workspace);
-        FileUtils.workspace = workspace;
-
         // Saros Core PathIntl Support
         container.addComponent(IPathFactory.class, new PathFactory());
 
-        container.addComponent(IWorkspace.class, workspace);
-        container.addComponent(IWorkspaceRoot.class, workspaceRoot);
         container.addComponent(Project.class, project);
+        container.addComponent(IWorkspace.class, IntelliJWorkspaceImpl.class);
+        container.addComponent(IWorkspaceRoot.class, IntelliJWorkspaceRootImpl.class);
 
         for (Component component : Arrays.asList(components)) {
             container.addComponent(component.getBindKey(),

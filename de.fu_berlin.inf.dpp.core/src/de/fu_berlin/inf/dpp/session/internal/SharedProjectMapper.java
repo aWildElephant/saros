@@ -111,7 +111,7 @@ public class SharedProjectMapper {
                 + currentProjectID);
         }
 
-        if (currentProject != null && !project.equals(currentProject)) {
+        if (currentProject != null && !currentProject.equals(project)) {
             throw new IllegalStateException("ID " + id + " for project "
                 + project + " is already used by project " + currentProject);
         }

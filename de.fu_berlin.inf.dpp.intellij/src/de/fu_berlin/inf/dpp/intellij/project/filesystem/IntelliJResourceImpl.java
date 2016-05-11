@@ -10,6 +10,7 @@ import de.fu_berlin.inf.dpp.filesystem.IPath;
 import de.fu_berlin.inf.dpp.filesystem.IProject;
 import de.fu_berlin.inf.dpp.filesystem.IResource;
 import de.fu_berlin.inf.dpp.filesystem.IResourceAttributes;
+import org.apache.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
@@ -19,38 +20,42 @@ import java.net.URI;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
 
+/**
+ * IntelliJ's implementation of the IResource interface.
+ */
 public abstract class IntelliJResourceImpl implements IResource {
 
     //TODO resolve charset issue by reading real data
     public static final String DEFAULT_CHARSET = "utf8";
+    private static final Logger LOG = Logger
+            .getLogger(IntelliJResourceImpl.class);
 
-    protected IProject project;
-    protected IPath projectRelativePath;
+    protected IntelliJWorkspaceImpl workspace;
+    protected IPath location;
     private IResourceAttributes attributes;
 
-    protected IntelliJResourceImpl(IProject project,
+    protected IntelliJResourceImpl(
+        @NotNull
+        IntelliJWorkspaceImpl workspace,
+        @NotNull
         File file) {
 
         if (file.isAbsolute()) {
-            if (!project.getLocation()
-                .isPrefixOf(IntelliJPathImpl.fromString(file.getPath()))) {
-                throw new IllegalArgumentException(
-                    "File " + file.getPath() + " does not belong in project "
-                        + project.getLocation());
-            }
-            this.projectRelativePath = IntelliJPathImpl
-                .fromString(file.getPath())
-                .removeFirstSegments(project.getLocation().segmentCount());
+            this.location = IntelliJPathImpl.fromString(file.getPath());
         } else {
-            this.projectRelativePath = IntelliJPathImpl
-                .fromString(file.getPath());
+            this.location = workspace.getLocation().append(file.getPath());
         }
-        this.project = project;
+
+        this.workspace = workspace;
         this.attributes = new IntelliJFileResourceAttributesImpl(file);
     }
 
     public String getDefaultCharset() {
         return DEFAULT_CHARSET;
+    }
+
+    public IntelliJWorkspaceImpl getWorkspace() {
+        return workspace;
     }
 
     @Override
@@ -60,33 +65,39 @@ public abstract class IntelliJResourceImpl implements IResource {
 
     @Override
     public IPath getFullPath() {
-        return IntelliJPathImpl.fromString(project.getName())
-            .append(projectRelativePath);
+        return ((IntelliJPathImpl) workspace.getLocation()).relativize(getLocation());
     }
 
     @Override
     public String getName() {
-        return projectRelativePath.lastSegment();
+        return location.lastSegment();
     }
 
     @Override
     public IntelliJFolderImpl getParent() {
-        return new IntelliJFolderImpl(project,
+        return new IntelliJFolderImpl(workspace,
             getLocation().toFile().getParentFile());
     }
 
     @Override
     public IProject getProject() {
-        return project;
+        return workspace.getProject(getFullPath().toPortableString());
     }
 
     @Override
     public IPath getProjectRelativePath() {
-        return projectRelativePath;
+        IntelliJProjectImpl project;
+        try {
+            project = workspace.getProjectForPath(getVirtualFile().getPath());
+        } catch (IOException e) {
+            return null;
+        }
+
+        return ((IntelliJPathImpl) project.getLocation()).relativize(getLocation());
     }
 
     public SPath getSPath() {
-        return new SPath(project, getProjectRelativePath());
+        return new SPath(getProject(), getProjectRelativePath());
     }
 
     @Override
@@ -122,7 +133,7 @@ public abstract class IntelliJResourceImpl implements IResource {
 
     @Override
     public IPath getLocation() {
-        return project.getLocation().append(projectRelativePath);
+        return location;
     }
 
     @Override
@@ -139,9 +150,10 @@ public abstract class IntelliJResourceImpl implements IResource {
 
         final IPath absoluteDestination = destination.makeAbsolute();
 
-        if (!project.getLocation().isPrefixOf(absoluteDestination)) {
+        if (!workspace.getLocation().isPrefixOf(absoluteDestination)) {
             throw new IOException(
-                "Destination does not belong in project " + project);
+                "Destination does not belong in current workspace "
+                    + workspace);
         }
 
         if (getLocation().isPrefixOf(absoluteDestination)) {
@@ -168,8 +180,7 @@ public abstract class IntelliJResourceImpl implements IResource {
             }
         });
 
-        projectRelativePath = absoluteDestination
-            .removeFirstSegments(project.getLocation().segmentCount());
+        location = absoluteDestination;
     }
 
     @Override
@@ -228,7 +239,7 @@ public abstract class IntelliJResourceImpl implements IResource {
 
     @Override
     public int hashCode() {
-        return Objects.hash(getLocation(), getProject());
+        return Objects.hash(getType(), getLocation());
     }
 
     @Override
@@ -239,7 +250,8 @@ public abstract class IntelliJResourceImpl implements IResource {
 
         IntelliJResourceImpl other = (IntelliJResourceImpl) obj;
 
-        return getLocation().equals(other.getLocation()) && getProject()
-            .equals(other.getProject());
+        return getType() == other.getType() && getWorkspace()
+            .equals(other.getWorkspace()) && getFullPath()
+            .equals(other.getFullPath());
     }
 }

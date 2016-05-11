@@ -4,17 +4,17 @@ import com.intellij.openapi.actionSystem.ActionGroup;
 import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.actionSystem.CommonDataKeys;
-import com.intellij.openapi.module.Module;
 import com.intellij.openapi.project.Project;
-import com.intellij.openapi.roots.ProjectFileIndex;
 import com.intellij.openapi.vfs.VirtualFile;
 import de.fu_berlin.inf.dpp.SarosPluginContext;
+import de.fu_berlin.inf.dpp.filesystem.IFolder;
+import de.fu_berlin.inf.dpp.filesystem.IProject;
+import de.fu_berlin.inf.dpp.filesystem.IWorkspace;
 import de.fu_berlin.inf.dpp.intellij.project.filesystem.IntelliJFolderImpl;
-import de.fu_berlin.inf.dpp.intellij.project.filesystem.IntelliJProjectImpl;
+import de.fu_berlin.inf.dpp.intellij.project.filesystem.IntelliJWorkspaceImpl;
 import de.fu_berlin.inf.dpp.net.xmpp.JID;
 import de.fu_berlin.inf.dpp.net.xmpp.XMPPConnectionService;
 import de.fu_berlin.inf.dpp.session.ISarosSessionManager;
-import org.apache.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jivesoftware.smack.Roster;
@@ -30,14 +30,15 @@ import java.util.List;
  * Saros action group for the pop-up menu when right-clicking on a module.
  */
 public class SarosFileShareGroup extends ActionGroup {
-    private static final Logger LOG = Logger
-        .getLogger(SarosFileShareGroup.class);
 
     @Inject
     private ISarosSessionManager sessionManager;
 
     @Inject
     private XMPPConnectionService connectionService;
+
+    @Inject
+    private IntelliJWorkspaceImpl workspace;
 
     @Override
     public void actionPerformed(AnActionEvent e) {
@@ -51,7 +52,7 @@ public class SarosFileShareGroup extends ActionGroup {
         AnActionEvent e) {
         // This has to be initialized here, because doing it in the
         // constructor would be too early. The lifecycle is not
-        // running yet when this class is instanciated.
+        // running yet when this class is instantiated.
         // To make the dependency injection work,
         // SarosPluginContext.initComponent has to be called here.
         if (sessionManager == null && connectionService == null) {
@@ -76,14 +77,11 @@ public class SarosFileShareGroup extends ActionGroup {
         if (roster == null)
             return new AnAction[0];
 
-        IntelliJProjectImpl project = null;
-        try {
-            project = getProjectFromVirtFile(virtualFile, ideaProject);
-        } catch (UnsupportedOperationException e1) {
-            return new AnAction[0];
-        }
+        IProject project = new IntelliJWorkspaceImpl(
+            e.getData(CommonDataKeys.PROJECT))
+            .getProjectForPath(virtualFile.getPath());
 
-        IntelliJFolderImpl resFolder = new IntelliJFolderImpl(project,
+        IntelliJFolderImpl resFolder = new IntelliJFolderImpl(workspace,
             new File(virtualFile.getPath()));
 
         //Holger: This disables partial sharing for the moment, until the need arises
@@ -101,22 +99,7 @@ public class SarosFileShareGroup extends ActionGroup {
             }
         }
 
-        return list.toArray(new AnAction[] {});
-    }
-
-    static IntelliJProjectImpl getProjectFromVirtFile(VirtualFile virtFile,
-        Project project) {
-        Module module = ProjectFileIndex.SERVICE.getInstance(project)
-            .getModuleForFile(virtFile);
-        String moduleName = null;
-        if (module != null) {
-            moduleName = module.getName();
-        } else {
-            //FIXME: Find way to select moduleName for non-module based IDEAs
-            //(Webstorm)
-            throw new UnsupportedOperationException();
-        }
-        return new IntelliJProjectImpl(project, moduleName);
+        return list.toArray(new AnAction[list.size()]);
     }
 
     /**
@@ -127,8 +110,7 @@ public class SarosFileShareGroup extends ActionGroup {
      * @param resFolder
      * @return
      */
-    private boolean isCompleteProject(IntelliJProjectImpl project,
-        IntelliJFolderImpl resFolder) {
+    private boolean isCompleteProject(IProject project, IFolder resFolder) {
         return resFolder.getLocation().equals(project.getLocation());
     }
 }

@@ -49,7 +49,7 @@ public class FileSystemChangeListener extends AbstractStoppableListener
     private static final Logger LOG = Logger
         .getLogger(FileSystemChangeListener.class);
     private final SharedResourcesManager resourceManager;
-    private IntelliJWorkspaceImpl intelliJWorkspaceImpl;
+    private IntelliJWorkspaceImpl workspace;
 
     //HACK: This list is used to filter events for files that were created from
     //remote, because we can not disable the listener for them
@@ -66,8 +66,6 @@ public class FileSystemChangeListener extends AbstractStoppableListener
     private void generateFolderMove(SPath oldSPath, SPath newSPath,
         boolean before) {
         User user = resourceManager.getSession().getLocalUser();
-        IntelliJProjectImpl project = (IntelliJProjectImpl) oldSPath
-            .getProject();
         IActivity createActivity = new FolderCreatedActivity(user, newSPath);
         resourceManager.internalFireActivity(createActivity);
 
@@ -81,11 +79,10 @@ public class FileSystemChangeListener extends AbstractStoppableListener
         }
 
         for (IResource resource : members) {
-            SPath oldChildSPath = new IntelliJFileImpl(project, new File(
+            SPath oldChildSPath = new IntelliJFileImpl(workspace, new File(
                 oldSPath.getFullPath().toOSString() + File.separator + resource
                     .getName())).getSPath();
-            SPath newChildSPath = new IntelliJFileImpl(
-                (IntelliJProjectImpl) newSPath.getProject(), new File(
+            SPath newChildSPath = new IntelliJFileImpl(workspace, new File(
                 newSPath.getFullPath().toOSString() + File.separator + resource
                     .getName())).getSPath();
             if (resource.getType() == IResource.FOLDER) {
@@ -97,9 +94,6 @@ public class FileSystemChangeListener extends AbstractStoppableListener
 
         IActivity removeActivity = new FolderDeletedActivity(user, oldSPath);
         resourceManager.internalFireActivity(removeActivity);
-
-        project.addFile(newSPath.getFile().getLocation().toFile());
-        project.removeFile(oldSPath.getFile().getLocation().toFile());
     }
 
     private void generateFileMove(SPath oldSPath, SPath newSPath,
@@ -132,8 +126,6 @@ public class FileSystemChangeListener extends AbstractStoppableListener
             newSPath, oldSPath, bytes, charset, FileActivity.Purpose.ACTIVITY);
         editorManager.replaceAllEditorsForPath(oldSPath, newSPath);
 
-        project.addFile(newSPath.getFile().getLocation().toFile());
-        oldProject.removeFile(oldSPath.getFile().getLocation().toFile());
         resourceManager.internalFireActivity(activity);
     }
 
@@ -152,14 +144,14 @@ public class FileSystemChangeListener extends AbstractStoppableListener
         @NotNull
         VirtualFileEvent virtualFileEvent) {
         VirtualFile virtualFile = virtualFileEvent.getFile();
-        IntelliJProjectImpl project = intelliJWorkspaceImpl
+        IntelliJProjectImpl project = workspace
             .getProjectForPath(virtualFile.getPath());
 
         if (!isValidProject(project)) {
             return;
         }
 
-        IFile file = new IntelliJFileImpl(project,
+        IFile file = new IntelliJFileImpl(workspace,
             new File(virtualFile.getPath()));
 
         if (!resourceManager.getSession().isShared(file) && !newFiles
@@ -201,9 +193,15 @@ public class FileSystemChangeListener extends AbstractStoppableListener
             return;
         }
 
+
         File file = convertVirtualFileEventToFile(virtualFileEvent);
+
+        if (incomingFilesToFilterFor.remove(file)) {
+            return;
+        }
+
         IPath path = IntelliJPathImpl.fromString(file.getPath());
-        IntelliJProjectImpl project = intelliJWorkspaceImpl
+        IntelliJProjectImpl project = workspace
             .getProjectForPath(file.getPath());
 
         if (!isValidProject(project)) {
@@ -214,11 +212,6 @@ public class FileSystemChangeListener extends AbstractStoppableListener
         //If this is the case, we do not want to send an FolderActivity back.
 
         if (path.equals(project.getLocation())) {
-            return;
-        }
-
-        if (incomingFilesToFilterFor.remove(file)) {
-            project.addFile(file);
             return;
         }
 
@@ -248,8 +241,6 @@ public class FileSystemChangeListener extends AbstractStoppableListener
             activity = new FolderCreatedActivity(user, spath);
         }
 
-        project.addFile(file);
-
         resourceManager.internalFireActivity(activity);
     }
 
@@ -267,7 +258,7 @@ public class FileSystemChangeListener extends AbstractStoppableListener
         }
 
         IPath path = IntelliJPathImpl.fromString(file.getPath());
-        IntelliJProjectImpl project = intelliJWorkspaceImpl
+        IntelliJProjectImpl project = workspace
             .getProjectForPath(file.getPath());
 
         if (!isValidProject(project) || !isCompletelyShared(project)) {
@@ -286,8 +277,6 @@ public class FileSystemChangeListener extends AbstractStoppableListener
             activity = FileActivity
                 .removed(user, spath, FileActivity.Purpose.ACTIVITY);
         }
-
-        project.removeFile(file);
         editorManager.removeAllEditorsForPath(spath);
 
         resourceManager.internalFireActivity(activity);
@@ -307,7 +296,7 @@ public class FileSystemChangeListener extends AbstractStoppableListener
         }
 
         IPath path = IntelliJPathImpl.fromString(newFile.getPath());
-        IntelliJProjectImpl project = intelliJWorkspaceImpl
+        IntelliJProjectImpl project = workspace
             .getProjectForPath(newFile.getPath());
 
         if (!isValidProject(project) || !isCompletelyShared(project)) {
@@ -321,7 +310,7 @@ public class FileSystemChangeListener extends AbstractStoppableListener
         IPath oldParent = IntelliJPathImpl
             .fromString(virtualFileMoveEvent.getOldParent().getPath());
         IPath oldPath = oldParent.append(virtualFileMoveEvent.getFileName());
-        IProject oldProject = intelliJWorkspaceImpl
+        IProject oldProject = workspace
             .getProjectForPath(oldPath.toPortableString());
 
         oldPath = makeAbsolutePathProjectRelative(oldPath, project);
@@ -361,7 +350,7 @@ public class FileSystemChangeListener extends AbstractStoppableListener
         }
 
         IPath oldPath = IntelliJPathImpl.fromString(oldFile.getPath());
-        IntelliJProjectImpl project = intelliJWorkspaceImpl
+        IntelliJProjectImpl project = workspace
             .getProjectForPath(newFile.getPath());
 
         if (!isValidProject(project)) {
@@ -399,7 +388,7 @@ public class FileSystemChangeListener extends AbstractStoppableListener
         }
 
         IPath path = IntelliJPathImpl.fromString(newFile.getPath());
-        IntelliJProjectImpl project = intelliJWorkspaceImpl
+        IntelliJProjectImpl project = workspace
             .getProjectForPath(newFile.getPath());
 
         if (!isValidProject(project) || !isCompletelyShared(project)) {
@@ -426,8 +415,6 @@ public class FileSystemChangeListener extends AbstractStoppableListener
         activity = FileActivity
             .created(user, spath, bytes, virtualFile.getCharset().name(),
                 FileActivity.Purpose.ACTIVITY);
-
-        project.addFile(newFile);
 
         resourceManager.internalFireActivity(activity);
     }
@@ -467,7 +454,7 @@ public class FileSystemChangeListener extends AbstractStoppableListener
     }
 
     public void setWorkspace(IntelliJWorkspaceImpl intelliJWorkspaceImpl) {
-        this.intelliJWorkspaceImpl = intelliJWorkspaceImpl;
+        this.workspace = intelliJWorkspaceImpl;
     }
 
     /**

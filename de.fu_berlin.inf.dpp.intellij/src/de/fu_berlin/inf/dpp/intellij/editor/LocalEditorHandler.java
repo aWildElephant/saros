@@ -4,8 +4,10 @@ import com.intellij.openapi.editor.Document;
 import com.intellij.openapi.editor.Editor;
 import com.intellij.openapi.vfs.VirtualFile;
 import de.fu_berlin.inf.dpp.activities.SPath;
+import de.fu_berlin.inf.dpp.filesystem.IPath;
 import de.fu_berlin.inf.dpp.filesystem.IProject;
-import de.fu_berlin.inf.dpp.filesystem.IResource;
+import de.fu_berlin.inf.dpp.intellij.project.filesystem.IntelliJPathImpl;
+import de.fu_berlin.inf.dpp.intellij.project.filesystem.IntelliJWorkspaceImpl;
 import org.apache.log4j.Logger;
 
 /**
@@ -26,8 +28,12 @@ public class LocalEditorHandler {
 
     private EditorManager manager;
 
-    public LocalEditorHandler(ProjectAPI projectAPI) {
+    private IntelliJWorkspaceImpl workspace;
+
+    public LocalEditorHandler(ProjectAPI projectAPI,
+        IntelliJWorkspaceImpl workspace) {
         this.projectAPI = projectAPI;
+        this.workspace = workspace;
     }
 
     /**
@@ -127,16 +133,11 @@ public class LocalEditorHandler {
             return null;
         }
 
-        IResource resource = null;
         String path = virtualFile.getPath();
+        IProject project = workspace.getProjectForPath(path);
+        IPath projectRelativePath = IntelliJPathImpl.fromString(path)
+            .removeFirstSegments(project.getLocation().segmentCount());
 
-        //TODO: Replace manager.getSession() call by call to Project API
-        for (IProject project : manager.getSession().getProjects()) {
-            resource = project.getFile(path);
-            if (resource != null) {
-                break;
-            }
-        }
-        return resource == null ? null : new SPath(resource);
+        return new SPath(project, projectRelativePath);
     }
 }

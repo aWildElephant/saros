@@ -164,6 +164,10 @@ public class IntelliJPathImpl implements IPath {
         return delegate.toFile();
     }
 
+    public IntelliJPathImpl relativize(IPath toRelativize) {
+        return new IntelliJPathImpl(delegate.relativize(toRelativize.toFile().toPath()), false);
+    }
+
     @Override
     public String toString() {
         return delegate.toString();

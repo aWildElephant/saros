@@ -4,8 +4,8 @@ import com.intellij.openapi.vfs.LocalFileSystem;
 import com.intellij.openapi.vfs.VirtualFile;
 import de.fu_berlin.inf.dpp.filesystem.IContainer;
 import de.fu_berlin.inf.dpp.filesystem.IPath;
-import de.fu_berlin.inf.dpp.filesystem.IProject;
 import de.fu_berlin.inf.dpp.filesystem.IResource;
+import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
 import java.io.IOException;
@@ -15,12 +15,17 @@ import java.util.List;
 public abstract class IntelliJContainerImpl extends IntelliJResourceImpl
     implements IContainer {
 
-    protected IntelliJContainerImpl(IProject project,
-        File projectRelativeFile) {
-        super(project, projectRelativeFile);
+    protected IntelliJContainerImpl(
+        @NotNull
+        IntelliJWorkspaceImpl workspace,
+        @NotNull
+        File path) {
+        super(workspace, path);
     }
 
-    public boolean exists(IPath path) {
+    public boolean exists(
+        @NotNull
+        IPath path) {
         return getLocation().append(path).toFile().exists();
     }
 
@@ -50,13 +55,13 @@ public abstract class IntelliJContainerImpl extends IntelliJResourceImpl
             if (file.isDirectory() && (memberFlags == FOLDER
                 || memberFlags == NONE)) {
                 list.add(
-                    new IntelliJFileImpl(project, new File(file.getPath())));
+                    new IntelliJFolderImpl(workspace, new File(file.getPath())));
             }
 
             if (!file.isDirectory() && (memberFlags == FILE
                 || memberFlags == NONE)) {
-                list.add(
-                    new IntelliJFolderImpl(project, new File(file.getPath())));
+                list.add(new IntelliJFileImpl(workspace,
+                    new File(file.getPath())));
             }
         }
 

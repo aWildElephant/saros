@@ -1,9 +1,14 @@
 package de.fu_berlin.inf.dpp.intellij.project.filesystem;
 
+import com.intellij.openapi.vfs.LocalFileSystem;
 import de.fu_berlin.inf.dpp.filesystem.IPath;
 import de.fu_berlin.inf.dpp.filesystem.IResource;
+import de.fu_berlin.inf.dpp.filesystem.IWorkspace;
 import org.jetbrains.annotations.NotNull;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.powermock.core.classloader.annotations.PrepareForTest;
+import org.powermock.modules.junit4.PowerMockRunner;
 
 import java.io.File;
 import java.io.IOException;
@@ -12,12 +17,14 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+@PrepareForTest({ LocalFileSystem.class })
+@RunWith(PowerMockRunner.class)
 public class IntelliJResourceImplTest extends AbstractResourceTest {
 
     static class DummyResource extends IntelliJResourceImpl {
 
-        protected DummyResource(IntelliJProjectImpl project, File file) {
-            super(project, file);
+        protected DummyResource(IntelliJWorkspaceImpl workspace, File file) {
+            super(workspace, file);
         }
 
         @Override
@@ -49,7 +56,8 @@ public class IntelliJResourceImplTest extends AbstractResourceTest {
 
     @NotNull
     private DummyResource getTestResource() {
-        return new DummyResource(getMockProject(), new File(TEST_FILE_NAME));
+        mockFileSystem();
+        return new DummyResource(getMockWorkspace(), new File(RELATIVE_TEST_RESOURCE_PATH));
     }
 
     @Test
@@ -106,7 +114,8 @@ public class IntelliJResourceImplTest extends AbstractResourceTest {
 
     @Test
     public void createResourceWithAbsolutePath() {
-        IResource resource = new DummyResource(getMockProject(),
+        mockFileSystem();
+        IResource resource = new DummyResource(getMockWorkspace(),
             new File(folder.getRoot().getAbsolutePath(),
                 RELATIVE_TEST_RESOURCE_PATH));
         assertFullPathIsCorrect(resource);
@@ -124,7 +133,7 @@ public class IntelliJResourceImplTest extends AbstractResourceTest {
     @Test
     public void equalsWithDifferingResources() {
         IResource resource1 = getTestResource();
-        IResource resource2 = new DummyResource(getMockProject(),
+        IResource resource2 = new DummyResource(getMockWorkspace(),
             new File("file"));
 
         assertFalse(resource1.equals(resource2));
