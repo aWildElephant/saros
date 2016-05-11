@@ -363,8 +363,7 @@ public class CollaborationUtils {
              * we need the .iml file, otherwise the project type will not be set
              * correctly on the other side
              */
-            IFolder projectFolder = new IntelliJFolderImpl(
-                (IntelliJProjectImpl) project, project.getFullPath().toFile());
+            IFolder projectFolder = new IntelliJFolderImpl(((IntelliJProjectImpl) project).getWorkspace(), project.getFullPath().toFile());
             try {
                 for (IResource pFile : projectFolder.members(IResource.FILE)) {
                     String sFileName = pFile.getName().toLowerCase();

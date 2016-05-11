@@ -2,7 +2,6 @@ package de.fu_berlin.inf.dpp.intellij.project.filesystem;
 
 import com.intellij.openapi.util.ThrowableComputable;
 import de.fu_berlin.inf.dpp.filesystem.IFolder;
-import de.fu_berlin.inf.dpp.filesystem.IProject;
 import de.fu_berlin.inf.dpp.filesystem.IResource;
 
 import java.io.File;
@@ -11,8 +10,8 @@ import java.io.IOException;
 public class IntelliJFolderImpl extends IntelliJContainerImpl
     implements IFolder {
 
-    public IntelliJFolderImpl(IProject project, File file) {
-        super(project, file);
+    public IntelliJFolderImpl(IntelliJWorkspaceImpl workspace, File file) {
+        super(workspace, file);
     }
 
     @Override

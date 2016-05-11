@@ -118,7 +118,7 @@ public class SarosIntellijContextFactory extends AbstractSarosContextFactory {
     @Override
     public void createComponents(MutablePicoContainer container) {
 
-        IWorkspace workspace = new IntelliJWorkspaceImpl(project);
+        IntelliJWorkspaceImpl workspace = new IntelliJWorkspaceImpl(project);
         IWorkspaceRoot workspaceRoot = new IntelliJWorkspaceRootImpl(workspace);
         FileUtils.workspace = workspace;
 

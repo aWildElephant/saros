@@ -8,6 +8,7 @@ import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.ThrowableComputable;
 import com.intellij.openapi.vfs.LocalFileSystem;
 import com.intellij.openapi.vfs.VirtualFile;
+import com.intellij.openapi.vfs.VirtualFileListener;
 import com.intellij.util.messages.MessageBusFactory;
 import org.easymock.IAnswer;
 import org.jetbrains.annotations.NotNull;
@@ -45,13 +46,15 @@ public class AbstractResourceTest {
         folder.newFolder(TEST_PROJECT_NAME);
     }
 
-    protected IntelliJProjectImpl getMockProject() {
+    protected IntelliJWorkspaceImpl getMockWorkspace() {
         Project project = createNiceMock(Project.class);
         expect(project.getBasePath())
-            .andReturn(folder.getRoot().getAbsolutePath());
+            .andReturn(folder.getRoot().getAbsolutePath()).anyTimes();
+        expect(project.getBaseDir())
+            .andReturn(new VirtualFileMock(folder.getRoot())).anyTimes();
         replay(project);
 
-        return new IntelliJProjectImpl(project, TEST_PROJECT_NAME);
+        return new IntelliJWorkspaceImpl(project);
     }
 
     protected void mockFileSystem() {
@@ -73,6 +76,20 @@ public class AbstractResourceTest {
                     @NotNull
                     String path) {
                     return new VirtualFileMock(new File(path));
+                }
+
+                @Override
+                public void addVirtualFileListener(
+                    @NotNull
+                    VirtualFileListener listener) {
+                    // NOP
+                }
+
+                @Override
+                public void removeVirtualFileListener(
+                    @NotNull
+                    VirtualFileListener listener) {
+                    // NOP
                 }
             }).anyTimes();
 
