@@ -210,7 +210,7 @@ public class SharedResourcesManager extends AbstractActivityProducer
         if (activity.getContent() == null)
             return;
 
-        handleFileCreation(activity);
+        handleFileCreation(activity); // If this call does anything useful, it means an activity hasn't been processed correctly
     }
 
     private void handleFileDeletion(FileActivity activity) throws IOException {

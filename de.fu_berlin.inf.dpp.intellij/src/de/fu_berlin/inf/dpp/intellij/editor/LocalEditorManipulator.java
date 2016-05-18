@@ -154,6 +154,8 @@ public class LocalEditorManipulator {
             }
         }
 
+        projectAPI.saveDocument(doc);
+
         manager.enableDocumentListener();
     }
 

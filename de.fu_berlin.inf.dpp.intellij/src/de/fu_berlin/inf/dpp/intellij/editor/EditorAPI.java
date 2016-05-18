@@ -2,6 +2,7 @@ package de.fu_berlin.inf.dpp.intellij.editor;
 
 import com.intellij.openapi.application.Application;
 import com.intellij.openapi.application.ApplicationManager;
+import com.intellij.openapi.application.ModalityState;
 import com.intellij.openapi.command.CommandProcessor;
 import com.intellij.openapi.editor.Document;
 import com.intellij.openapi.editor.Editor;
@@ -12,13 +13,12 @@ import com.intellij.openapi.editor.markup.HighlighterTargetArea;
 import com.intellij.openapi.editor.markup.RangeHighlighter;
 import com.intellij.openapi.editor.markup.TextAttributes;
 import com.intellij.openapi.project.Project;
-import com.intellij.util.ui.UIUtil;
 import de.fu_berlin.inf.dpp.intellij.editor.colorstorage.ColorModel;
 
 import java.awt.Color;
 
 /**
- * IntellJ editor API. An Editor is a window for editing source files.
+ * IntelliJ editor API. An Editor is a window for editing source files.
  * <p/>
  * Performs IntelliJ editor related actions in the UI thread.
  */
@@ -27,16 +27,17 @@ public class EditorAPI {
 
     private Application application;
     private CommandProcessor commandProcessor;
-
     private Project project;
 
     /**
-     * Creates an EditorAPI with the current Project and initializes Fields.
+     * Creates an EditorAPI with the current Project and initializes fields.
      */
     public EditorAPI(Project project) {
         this.project = project;
-        this.application = ApplicationManager.getApplication();
-        this.commandProcessor = CommandProcessor.getInstance();
+        this.application = ApplicationManager
+            .getApplication();
+        this.commandProcessor = CommandProcessor
+            .getInstance();
     }
 
     /**
@@ -49,7 +50,7 @@ public class EditorAPI {
     public void setViewPort(final Editor editor, final int lineStart,
         final int lineEnd) {
 
-        Runnable action = new Runnable() {
+        application.invokeAndWait(new Runnable() {
             @Override
             public void run() {
 
@@ -60,9 +61,7 @@ public class EditorAPI {
                     .scrollToCaret(ScrollType.MAKE_VISIBLE);
 
             }
-        };
-
-        UIUtil.invokeAndWaitIfNeeded(action);
+        }, ModalityState.NON_MODAL);
     }
 
     /**
@@ -75,7 +74,7 @@ public class EditorAPI {
     public void insertText(final Document doc, final int position,
         final String text) {
 
-        Runnable action = new Runnable() {
+        application.invokeAndWait(new Runnable() {
             @Override
             public void run() {
                 commandProcessor.executeCommand(project, new Runnable() {
@@ -90,9 +89,7 @@ public class EditorAPI {
                     }
                 }, "insertText()", commandProcessor.getCurrentCommandGroupId());
             }
-        };
-
-        UIUtil.invokeAndWaitIfNeeded(action);
+        }, ModalityState.NON_MODAL);
     }
 
     /**
@@ -102,7 +99,7 @@ public class EditorAPI {
      * @param text
      */
     public void setText(final Document doc, final String text) {
-        Runnable action = new Runnable() {
+        application.invokeAndWait(new Runnable() {
             @Override
             public void run() {
                 commandProcessor.executeCommand(project, new Runnable() {
@@ -117,9 +114,7 @@ public class EditorAPI {
                     }
                 }, "setText()", commandProcessor.getCurrentCommandGroupId());
             }
-        };
-
-        UIUtil.invokeAndWaitIfNeeded(action);
+        }, ModalityState.NON_MODAL);
     }
 
     /**
@@ -182,7 +177,7 @@ public class EditorAPI {
      * @param end
      */
     public void deleteText(final Document doc, final int start, final int end) {
-        Runnable action = new Runnable() {
+        application.invokeAndWait(new Runnable() {
             @Override
             public void run() {
                 commandProcessor.executeCommand(project, new Runnable() {
@@ -198,9 +193,7 @@ public class EditorAPI {
                     }, "deleteText(" + start + "," + end + ")",
                     commandProcessor.getCurrentCommandGroupId());
             }
-        };
-
-        UIUtil.invokeAndWaitIfNeeded(action);
+        }, ModalityState.NON_MODAL);
     }
 
     /**
@@ -214,7 +207,7 @@ public class EditorAPI {
     public void setSelection(final Editor editor, final int start,
         final int end, ColorModel colorMode) {
 
-        Runnable action = new Runnable() {
+        application.invokeAndWait(new Runnable() {
             @Override
             public void run() {
                 application.runReadAction(new Runnable() {
@@ -245,9 +238,6 @@ public class EditorAPI {
                     }
                 });
             }
-        };
-
-        UIUtil.invokeAndWaitIfNeeded(action);
-
+        }, ModalityState.NON_MODAL);
     }
 }
