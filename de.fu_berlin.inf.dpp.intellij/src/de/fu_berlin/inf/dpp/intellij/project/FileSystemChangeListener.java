@@ -124,12 +124,10 @@ public class FileSystemChangeListener extends AbstractStoppableListener
             return;
         }
 
-        byte[] bytes = FileUtils.getLocalFileContent(file);
-
         String charset = getEncoding(file);
 
         IActivity activity = new FileActivity(user, FileActivity.Type.MOVED,
-            newSPath, oldSPath, bytes, charset, FileActivity.Purpose.ACTIVITY);
+            newSPath, oldSPath, null, charset, FileActivity.Purpose.ACTIVITY);
 
         project.addFile(newSPath.getFile().getLocation().toFile());
         oldProject.removeFile(oldSPath.getFile().getLocation().toFile());
@@ -291,6 +289,9 @@ public class FileSystemChangeListener extends AbstractStoppableListener
         resourceManager.internalFireActivity(activity);
     }
 
+    /**
+     * Handles if a file was moved to a new parent locally.
+     */
     @Override
     public void fileMoved(
         @NotNull

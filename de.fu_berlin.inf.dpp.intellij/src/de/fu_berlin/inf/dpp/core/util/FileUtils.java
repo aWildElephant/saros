@@ -288,7 +288,7 @@ public class FileUtils {
 
                 source.move(absDestination, false);
 
-                if (monitor.isCanceled()) {
+                if (monitor.isCanceled()) { // What is the point?
                     log.warn("Moving resource failed (Cancel Button pressed).");
                 }
             }

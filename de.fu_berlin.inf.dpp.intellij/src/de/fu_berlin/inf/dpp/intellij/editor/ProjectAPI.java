@@ -14,13 +14,12 @@ import com.intellij.util.ui.UIUtil;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
- * IntellIJ API for project-level operations on editors and documents.
+ * IntelliJ API for project-level operations on editors and documents.
  */
 public class ProjectAPI {
 
     private Application application;
     private FileDocumentManager fileDocumentManager;
-
     private FileEditorManager editorFileManager;
 
     private class WriteAction implements Runnable {
@@ -139,15 +138,20 @@ public class ProjectAPI {
     }
 
     /**
-     * Saves the given document in the UI thread.
+     * Saves the given document.
+     * <p/>
+     * This method does not modify the document. It executes synchronously in the
+     * dispatch thread.
      *
-     * @param doc
+     * {@link Application#invokeAndWait(Runnable, ModalityState)}
+     * {@link ModalityState#NON_MODAL}
+     * {@link FileDocumentManager#saveDocumentAsIs(Document)}
      */
     public void saveDocument(final Document doc) {
         application.invokeAndWait(new WriteAction(new Runnable() {
             @Override
             public void run() {
-                fileDocumentManager.saveDocument(doc);
+                fileDocumentManager.saveDocumentAsIs(doc);
             }
         }), ModalityState.NON_MODAL);
 
