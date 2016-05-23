@@ -312,6 +312,12 @@ public class EditorManager extends AbstractActivityProducer
 
         @Override
         public void projectResourcesAvailable(String projectID) {
+            /* Refresh the file system synchronously so that we are sure that
+             * - resources exist in the VFS,
+             * - events have been fired for eventual modifications.
+             */
+            LocalFileSystem.getInstance().refresh(false);
+
             if (!isFollowing()) {
                 return;
             }

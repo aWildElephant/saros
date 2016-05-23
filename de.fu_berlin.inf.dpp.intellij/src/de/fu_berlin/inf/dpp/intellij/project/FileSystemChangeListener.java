@@ -231,6 +231,11 @@ public class FileSystemChangeListener extends AbstractStoppableListener
         path = makeAbsolutePathProjectRelative(path, project);
 
         SPath spath = new SPath(project, path);
+
+        if (!resourceManager.getSession().isShared(spath.getResource())) {
+           return;
+        }
+
         User user = resourceManager.getSession().getLocalUser();
         IActivity activity;
 
@@ -277,6 +282,11 @@ public class FileSystemChangeListener extends AbstractStoppableListener
         path = makeAbsolutePathProjectRelative(path, project);
 
         SPath spath = new SPath(project, path);
+
+        if (!resourceManager.getSession().isShared(spath.getResource())) {
+            return;
+        }
+
         User user = resourceManager.getSession().getLocalUser();
 
         IActivity activity;
