@@ -117,7 +117,6 @@ public class SarosIntellijContextFactory extends AbstractSarosContextFactory {
 
     @Override
     public void createComponents(MutablePicoContainer container) {
-
         // Saros Core PathIntl Support
         container.addComponent(IPathFactory.class, new PathFactory());
 
