@@ -6,6 +6,7 @@ import de.fu_berlin.inf.dpp.filesystem.IProject;
 import de.fu_berlin.inf.dpp.filesystem.IResource;
 import de.fu_berlin.inf.dpp.filesystem.IWorkspace;
 import de.fu_berlin.inf.dpp.intellij.project.filesystem.IntelliJProjectImpl;
+import de.fu_berlin.inf.dpp.intellij.project.filesystem.IntelliJWorkspaceImpl;
 import de.fu_berlin.inf.dpp.intellij.ui.Messages;
 import de.fu_berlin.inf.dpp.intellij.ui.util.DialogUtils;
 import de.fu_berlin.inf.dpp.intellij.ui.util.JobWithStatus;
@@ -31,6 +32,7 @@ import de.fu_berlin.inf.dpp.util.ThreadUtils;
 import org.apache.log4j.Logger;
 import org.picocontainer.annotations.Inject;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
@@ -77,7 +79,7 @@ public class AddProjectToSessionWizard extends Wizard {
     private ISarosSessionManager sessionManager;
 
     @Inject
-    private IWorkspace workspace;
+    private IntelliJWorkspaceImpl workspace;
 
     private final SelectProjectPage selectProjectPage;
     private final TextAreaPage fileListPage;
@@ -100,7 +102,9 @@ public class AddProjectToSessionWizard extends Wizard {
             //and it is unclear how that resolves.
             final String newProjectName = selectProjectPage
                 .getLocalProjectName();
-            IProject project = workspace.getProject(newProjectName);
+
+            // FIXME: I am creating the project manually since IWorkspace#getProject can now tell the user to heck off if the given path do not correspond to an existing IProject
+            IProject project = new IntelliJProjectImpl(workspace, new File(newProjectName));
 
             localProjects.put(remoteProjectID, project);
 

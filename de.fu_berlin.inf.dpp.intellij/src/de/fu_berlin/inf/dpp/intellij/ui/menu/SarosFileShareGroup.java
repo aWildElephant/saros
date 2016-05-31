@@ -5,6 +5,7 @@ import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.actionSystem.CommonDataKeys;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.roots.ProjectFileIndex;
 import com.intellij.openapi.vfs.VirtualFile;
 import de.fu_berlin.inf.dpp.SarosPluginContext;
 import de.fu_berlin.inf.dpp.filesystem.IFolder;
@@ -12,9 +13,11 @@ import de.fu_berlin.inf.dpp.filesystem.IProject;
 import de.fu_berlin.inf.dpp.filesystem.IWorkspace;
 import de.fu_berlin.inf.dpp.intellij.project.filesystem.IntelliJFolderImpl;
 import de.fu_berlin.inf.dpp.intellij.project.filesystem.IntelliJWorkspaceImpl;
+import de.fu_berlin.inf.dpp.intellij.project.filesystem.IntelliJProjectImpl;
 import de.fu_berlin.inf.dpp.net.xmpp.JID;
 import de.fu_berlin.inf.dpp.net.xmpp.XMPPConnectionService;
 import de.fu_berlin.inf.dpp.session.ISarosSessionManager;
+import org.apache.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jivesoftware.smack.Roster;
@@ -22,14 +25,19 @@ import org.jivesoftware.smack.RosterEntry;
 import org.jivesoftware.smack.packet.Presence;
 import org.picocontainer.annotations.Inject;
 
-import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Saros action group for the pop-up menu when right-clicking on a module.
+ * Saros action group for the pop-up menu when right-clicking in the project view.
+ * <p/>
+ * Computes the list of actions to share the selected element with each available
+ * contacts.
  */
 public class SarosFileShareGroup extends ActionGroup {
+
+    private static final Logger LOG = Logger
+        .getLogger(SarosFileShareGroup.class);
 
     @Inject
     private ISarosSessionManager sessionManager;
@@ -39,11 +47,6 @@ public class SarosFileShareGroup extends ActionGroup {
 
     @Inject
     private IntelliJWorkspaceImpl workspace;
-
-    @Override
-    public void actionPerformed(AnActionEvent e) {
-        //do nothing when menu pops-up
-    }
 
     @NotNull
     @Override
@@ -59,34 +62,41 @@ public class SarosFileShareGroup extends ActionGroup {
             SarosPluginContext.initComponent(this);
         }
 
+        // The second expression seems to be here to prevent adding a project to a session.
         if (e == null || sessionManager.getSarosSession() != null) {
-            return new AnAction[0];
+            return EMPTY_ARRAY;
         }
 
         VirtualFile virtualFile = e.getData(CommonDataKeys.VIRTUAL_FILE);
+        if (virtualFile == null) {
+            LOG.debug("Cannot retrieve selected file");
+            return EMPTY_ARRAY;
+        }
+
         Project ideaProject = e.getData(CommonDataKeys.PROJECT);
-        if (virtualFile == null || ideaProject == null) {
-            return new AnAction[0];
+        if (ideaProject == null) {
+            LOG.debug("Cannot retrieve current IntelliJ project");
+            return EMPTY_ARRAY;
         }
 
         if (!virtualFile.isDirectory()) {
-            return new AnAction[0];
+            return EMPTY_ARRAY;
         }
 
+        VirtualFile root = ProjectFileIndex.SERVICE.getInstance(ideaProject)
+            .getContentRootForFile(virtualFile);
+        // This disables partial sharing
+        if (!virtualFile.equals(root)) {
+            LOG.debug("Selected file is not a content root: " + virtualFile);
+            return EMPTY_ARRAY;
+        }
+
+        // User selected has chosen a correct input. We now create the list of possible pair
+        // and will let ShareWithUserAction properly create the resources.
+
         Roster roster = connectionService.getRoster();
-        if (roster == null)
-            return new AnAction[0];
-
-        IProject project = new IntelliJWorkspaceImpl(
-            e.getData(CommonDataKeys.PROJECT))
-            .getProjectForPath(virtualFile.getPath());
-
-        IntelliJFolderImpl resFolder = new IntelliJFolderImpl(workspace,
-            new File(virtualFile.getPath()));
-
-        //Holger: This disables partial sharing for the moment, until the need arises
-        if (!isCompleteProject(project, resFolder)) {
-            return new AnAction[0];
+        if (roster == null) {
+            return EMPTY_ARRAY;
         }
 
         List<AnAction> list = new ArrayList<AnAction>();
@@ -95,22 +105,10 @@ public class SarosFileShareGroup extends ActionGroup {
 
             if (presence.getType() == Presence.Type.available) {
                 list.add(
-                    new ShareWithUserAction(new JID(rosterEntry.getUser())));
+                    new ShareWithUserAction(new JID(rosterEntry.getUser()), workspace));
             }
         }
 
         return list.toArray(new AnAction[list.size()]);
-    }
-
-    /**
-     * Checks whether a given folder is the project (module) root folder, to allow
-     * only complete modules to be shared.
-     *
-     * @param project
-     * @param resFolder
-     * @return
-     */
-    private boolean isCompleteProject(IProject project, IFolder resFolder) {
-        return resFolder.getLocation().equals(project.getLocation());
     }
 }
