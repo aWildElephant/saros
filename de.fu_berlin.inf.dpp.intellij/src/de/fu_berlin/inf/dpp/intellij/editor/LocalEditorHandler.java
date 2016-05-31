@@ -4,8 +4,10 @@ import com.intellij.openapi.editor.Document;
 import com.intellij.openapi.editor.Editor;
 import com.intellij.openapi.vfs.VirtualFile;
 import de.fu_berlin.inf.dpp.activities.SPath;
+import de.fu_berlin.inf.dpp.filesystem.IPath;
 import de.fu_berlin.inf.dpp.filesystem.IProject;
 import de.fu_berlin.inf.dpp.filesystem.IResource;
+import de.fu_berlin.inf.dpp.intellij.project.filesystem.IntelliJPathImpl;
 import org.apache.log4j.Logger;
 
 /**
@@ -128,12 +130,12 @@ public class LocalEditorHandler {
         }
 
         IResource resource = null;
-        String path = virtualFile.getPath();
+        IPath path = IntelliJPathImpl.fromString(virtualFile.getPath());
 
         //TODO: Replace manager.getSession() call by call to Project API
         for (IProject project : manager.getSession().getProjects()) {
-            resource = project.getFile(path);
-            if (resource != null) {
+            if (project.getLocation().isPrefixOf(path)) {
+                resource = project.findMember(path.removeFirstSegments(project.getLocation().segmentCount()));
                 break;
             }
         }
