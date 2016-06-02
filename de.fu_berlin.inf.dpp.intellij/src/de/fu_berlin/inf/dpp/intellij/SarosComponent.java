@@ -29,7 +29,7 @@ public class SarosComponent
 
         Keymap keymap = KeymapManager.getInstance().getActiveKeymap();
         keymap.addShortcut("ActivateSarosToolWindow", new KeyboardShortcut(
-            KeyStroke.getKeyStroke(KeyEvent.VK_F11,
+            KeyStroke.getKeyStroke(KeyEvent.VK_F10,
                 java.awt.event.InputEvent.ALT_DOWN_MASK), null));
 
         IntellijSarosLifecycle.getInstance(project).start();
